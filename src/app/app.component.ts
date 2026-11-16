@@ -5,6 +5,7 @@ import { AuthModalComponent } from './core/components/auth-modal/auth-modal.comp
 import { TopHeaderComponent } from './core/components/top-header/top-header.component';
 import { WishesPanelComponent } from './features/main-board/wishes-panel/wishes-panel.component';
 import { ControlsFilterBarComponent } from './features/main-board/controls-filter-bar/controls-filter-bar.component';
+import { CollageCanvasComponent } from './features/main-board/collage-canvas/collage-canvas.component';
 import { MapboxViewComponent } from './features/main-board/mapbox-view/mapbox-view.component';
 import { AuthService } from './core/services/auth.service';
 import { AuthModalService } from './core/services/auth-modal.service';
@@ -20,6 +21,7 @@ import { requireAuth } from './core/guards/guest-prompt.guard';
     TopHeaderComponent,
     WishesPanelComponent,
     ControlsFilterBarComponent,
+    CollageCanvasComponent,
     MapboxViewComponent,
     AuthModalComponent
   ],
