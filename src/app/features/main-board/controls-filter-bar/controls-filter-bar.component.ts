@@ -53,12 +53,14 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               placeholder="Country..."
               [ngModel]="boardState.filterCountry()"
               (ngModelChange)="onCountryInput($event)"
+              (focus)="onCountryFocus()"
+              (blur)="onBlurField('country')"
               class="w-full px-2.5 py-1.5 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#C85A32] transition" />
             @if (countrySuggestions().length > 0) {
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of countrySuggestions(); track item.id) {
                   <li 
-                    (click)="selectCountry(item)"
+                    (mousedown)="selectCountry(item)"
                     class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate">
                     {{ item.country }}
                   </li>
@@ -74,12 +76,14 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               placeholder="City..."
               [ngModel]="boardState.filterCity()"
               (ngModelChange)="onCityInput($event)"
+              (focus)="onCityFocus()"
+              (blur)="onBlurField('city')"
               class="w-full px-2.5 py-1.5 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#C85A32] transition" />
             @if (citySuggestions().length > 0) {
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of citySuggestions(); track item.id) {
                   <li 
-                    (click)="selectCity(item)"
+                    (mousedown)="selectCity(item)"
                     class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate">
                     {{ item.city }} <span class="text-[10px] text-[#6E665F]">({{ item.country }})</span>
                   </li>
@@ -95,12 +99,14 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               placeholder="District..."
               [ngModel]="boardState.filterDistrict()"
               (ngModelChange)="onDistrictInput($event)"
+              (focus)="onDistrictFocus()"
+              (blur)="onBlurField('district')"
               class="w-full px-2.5 py-1.5 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#C85A32] transition font-medium" />
             @if (districtSuggestions().length > 0) {
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of districtSuggestions(); track item.id) {
                   <li 
-                    (click)="selectDistrict(item)"
+                    (mousedown)="selectDistrict(item)"
                     class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate flex items-center justify-between">
                     <span>📍 {{ item.district }}</span>
                     <span class="text-[10px] text-[#6E665F]">{{ item.city }}</span>
@@ -201,7 +207,13 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
                     type="text" 
                     formControlName="country"
                     placeholder="Country"
+                    list="modal-country-list"
                     class="w-full px-2 py-1.5 rounded-lg border border-[#D8CEC2] text-xs bg-white focus:outline-none" />
+                  <datalist id="modal-country-list">
+                    @for (c of allCountries; track c) {
+                      <option [value]="c"></option>
+                    }
+                  </datalist>
                 </div>
                 <div>
                   <label class="block text-[10px] text-[#6E665F] mb-0.5">City</label>
@@ -396,6 +408,8 @@ export class ControlsFilterBarComponent {
   @ViewChild('photoInput') photoInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('videoInput') videoInputRef?: ElementRef<HTMLInputElement>;
 
+  readonly allCountries = this.geoService.getAllCountries();
+
   readonly countrySuggestions = signal<LocationPin[]>([]);
   readonly citySuggestions = signal<LocationPin[]>([]);
   readonly districtSuggestions = signal<LocationPin[]>([]);
@@ -443,29 +457,40 @@ export class ControlsFilterBarComponent {
   }
 
   // --- LOCATION FILTER HANDLERS ---
+  async onCountryFocus(): Promise<void> {
+    const results = await this.geoService.search('country', this.boardState.filterCountry());
+    this.countrySuggestions.set(results);
+  }
+
   async onCountryInput(val: string): Promise<void> {
     this.boardState.filterCountry.set(val);
-    if (val.length >= 2) {
-      const results = await this.geoService.search('country', val);
-      this.countrySuggestions.set(results);
-    } else {
-      this.countrySuggestions.set([]);
-    }
+    const results = await this.geoService.search('country', val);
+    this.countrySuggestions.set(results);
   }
 
   selectCountry(item: LocationPin): void {
     this.boardState.filterCountry.set(item.country);
     this.countrySuggestions.set([]);
+    this.onCityFocus();
+  }
+
+  async onCityFocus(): Promise<void> {
+    const results = await this.geoService.search(
+      'city',
+      this.boardState.filterCity(),
+      this.boardState.filterCountry()
+    );
+    this.citySuggestions.set(results);
   }
 
   async onCityInput(val: string): Promise<void> {
     this.boardState.filterCity.set(val);
-    if (val.length >= 2) {
-      const results = await this.geoService.search('city', val, this.boardState.filterCountry());
-      this.citySuggestions.set(results);
-    } else {
-      this.citySuggestions.set([]);
-    }
+    const results = await this.geoService.search(
+      'city',
+      val,
+      this.boardState.filterCountry()
+    );
+    this.citySuggestions.set(results);
   }
 
   selectCity(item: LocationPin): void {
@@ -474,21 +499,36 @@ export class ControlsFilterBarComponent {
       this.boardState.filterCountry.set(item.country);
     }
     this.citySuggestions.set([]);
+    this.onDistrictFocus();
+  }
+
+  async onDistrictFocus(): Promise<void> {
+    const results = await this.geoService.search(
+      'district',
+      this.boardState.filterDistrict(),
+      this.boardState.filterCountry(),
+      this.boardState.filterCity()
+    );
+    this.districtSuggestions.set(results);
   }
 
   async onDistrictInput(val: string): Promise<void> {
     this.boardState.filterDistrict.set(val);
-    if (val.length >= 2) {
-      const results = await this.geoService.search(
-        'district',
-        val,
-        this.boardState.filterCountry(),
-        this.boardState.filterCity()
-      );
-      this.districtSuggestions.set(results);
-    } else {
-      this.districtSuggestions.set([]);
-    }
+    const results = await this.geoService.search(
+      'district',
+      val,
+      this.boardState.filterCountry(),
+      this.boardState.filterCity()
+    );
+    this.districtSuggestions.set(results);
+  }
+
+  onBlurField(field: 'country' | 'city' | 'district'): void {
+    setTimeout(() => {
+      if (field === 'country') this.countrySuggestions.set([]);
+      if (field === 'city') this.citySuggestions.set([]);
+      if (field === 'district') this.districtSuggestions.set([]);
+    }, 200);
   }
 
   selectDistrict(item: LocationPin): void {
