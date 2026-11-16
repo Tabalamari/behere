@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { WishesPanelComponent } from './wishes-panel/wishes-panel.component';
 import { ControlsFilterBarComponent } from './controls-filter-bar/controls-filter-bar.component';
 import { CollageCanvasComponent } from './collage-canvas/collage-canvas.component';
+import { AudioStoryBarComponent } from './audio-story-bar/audio-story-bar.component';
 import { MapboxViewComponent } from './mapbox-view/mapbox-view.component';
 
 @Component({
@@ -13,6 +14,7 @@ import { MapboxViewComponent } from './mapbox-view/mapbox-view.component';
     WishesPanelComponent,
     ControlsFilterBarComponent,
     CollageCanvasComponent,
+    AudioStoryBarComponent,
     MapboxViewComponent
   ],
   template: `
@@ -25,6 +27,9 @@ import { MapboxViewComponent } from './mapbox-view/mapbox-view.component';
 
       <!-- ROW 3: Central 25-Card Stratified Collage Canvas & Expanded Modal (FR-5) -->
       <app-collage-canvas />
+
+      <!-- ROW 4: AI Historical Spoken Audio Story Player Bar (FR-6) -->
+      <app-audio-story-bar />
 
       <!-- Bottom: Interactive Mapbox District Map (FR-4) -->
       <div class="w-full">
