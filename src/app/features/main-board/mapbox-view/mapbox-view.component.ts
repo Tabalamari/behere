@@ -19,6 +19,30 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { LocationPin } from '../../../core/models/memory.model';
 import { environment } from '../../../../environments/environment';
 
+// High-reliability OpenStreetMap raster style for instant fallback if vector tiles fail
+const OSM_RASTER_STYLE: mapboxgl.Style = {
+  version: 8,
+  sources: {
+    'osm-tiles': {
+      type: 'raster',
+      tiles: [
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      ],
+      tileSize: 256,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+    }
+  },
+  layers: [
+    {
+      id: 'osm-tiles-layer',
+      type: 'raster',
+      source: 'osm-tiles',
+      minzoom: 0,
+      maxzoom: 19
+    }
+  ]
+};
+
 @Component({
   selector: 'app-mapbox-view',
   standalone: true,
@@ -53,42 +77,26 @@ import { environment } from '../../../../environments/environment';
       </div>
 
       <!-- Map Container -->
-      <div class="relative w-full h-[360px] sm:h-[420px] bg-neutral-100">
+      <div class="relative w-full h-[360px] sm:h-[420px] bg-[#FAF7F2]">
         <!-- WebGL Map container -->
         <div #mapContainer class="w-full h-full min-h-[360px]"></div>
 
-        <!-- Fallback Interactive Preview if Mapbox token is missing/invalid -->
-        @if (!hasValidMapboxToken) {
-          <div class="absolute inset-0 bg-[#E8E2D9] flex flex-col items-center justify-center p-4 z-10">
-            <div class="w-full max-w-lg bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-border-custom text-center">
-              <div class="text-2xl mb-1">📍</div>
-              <h4 class="font-serif font-bold text-sm text-ink mb-1">
-                Interactive District Map (Mapbox Preview Mode)
-              </h4>
-              <p class="text-xs text-muted mb-3">
-                To connect the full 3D layer, configure <code class="bg-bg-paper px-1 py-0.5 rounded font-mono text-accent">mapboxAccessToken</code> in <code class="font-mono text-xs">environment.ts</code>.
-              </p>
-              
-              <!-- Interactive fallback pins -->
-              <div class="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-border-custom">
-                <span class="text-xs font-semibold text-ink">Available Districts:</span>
-                @for (pin of activePins(); track pin.id) {
-                  <button
-                    type="button"
-                    (click)="onPinClick(pin)"
-                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 shadow-sm border"
-                    [ngClass]="boardState.selectedLocation()?.id === pin.id 
-                      ? 'bg-accent text-white ring-2 border-accent' 
-                      : 'bg-white text-ink hover:border-accent border-border-custom'"
-                  >
-                    <span>📍</span>
-                    <span>{{ pin.district }} ({{ pin.city }})</span>
-                  </button>
-                }
-              </div>
-            </div>
-          </div>
-        }
+        <!-- Available Districts Quick Bar underneath header if needed -->
+        <div class="absolute bottom-2 left-2 z-10 flex flex-wrap items-center gap-1.5 max-w-[calc(100%-120px)] pointer-events-auto">
+          @for (pin of activePins(); track pin.id) {
+            <button
+              type="button"
+              (click)="onPinClick(pin)"
+              class="px-2.5 py-1 rounded-full text-[11px] font-semibold transition flex items-center gap-1 shadow-sm border backdrop-blur-md cursor-pointer"
+              [ngClass]="boardState.selectedLocation()?.id === pin.id 
+                ? 'bg-accent text-white ring-2 ring-accent border-accent' 
+                : 'bg-white/95 text-ink hover:border-accent border-border-custom hover:bg-white'"
+            >
+              <span>📍</span>
+              <span>{{ pin.district }}</span>
+            </button>
+          }
+        </div>
       </div>
     </section>
   `,
@@ -113,6 +121,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private map: mapboxgl.Map | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private styleWatchdogTimeout: ReturnType<typeof setTimeout> | null = null;
   private markersMap = new Map<string, mapboxgl.Marker>();
   readonly activePins = signal<LocationPin[]>([]);
 
@@ -142,11 +151,15 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.checkMapboxToken();
+      this.initResilientMap();
     }
   }
 
   ngOnDestroy(): void {
+    if (this.styleWatchdogTimeout) {
+      clearTimeout(this.styleWatchdogTimeout);
+      this.styleWatchdogTimeout = null;
+    }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -157,34 +170,67 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private checkMapboxToken(): void {
-    const token = environment.mapboxAccessToken;
-    if (token && token.trim().length > 10 && !token.includes('placeholder')) {
-      mapboxgl.accessToken = token;
-      this.hasValidMapboxToken = true;
-      this.initMapboxMap();
-    } else {
-      this.hasValidMapboxToken = false;
-    }
-  }
-
   /**
-   * Initializes Mapbox GL JS map strictly OUTSIDE Angular zone
-   * to ensure 60 FPS performance without triggering Angular change detection
+   * Initializes Mapbox GL map with vector layer & automatic OSM raster fallback
    */
-  private initMapboxMap(): void {
+  private initResilientMap(): void {
     this.ngZone.runOutsideAngular(() => {
       try {
-        const defaultCenter: [number, number] = [-0.142, 50.835]; // Brighton center default
+        const token = (environment.mapboxAccessToken || '').trim();
+        const hasToken = token.length > 10 && !token.includes('placeholder');
+        if (hasToken) {
+          mapboxgl.accessToken = token;
+          this.hasValidMapboxToken = true;
+        }
+
+        const defaultCenter: [number, number] = [-0.142, 50.835]; // Brighton center
+        const initialStyle = hasToken ? 'mapbox://styles/mapbox/streets-v12' : OSM_RASTER_STYLE;
 
         this.map = new mapboxgl.Map({
+          accessToken: hasToken ? token : undefined,
           container: this.mapContainer.nativeElement,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: initialStyle,
           center: defaultCenter,
           zoom: 12
         });
 
-        this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        this.map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+
+        let fallbackTriggered = false;
+        const triggerRasterFallback = () => {
+          if (fallbackTriggered || !this.map) return;
+          fallbackTriggered = true;
+          console.warn('[Mapbox] Vector style unavailable or failed to load. Switching to OpenStreetMap raster tiles.');
+          try {
+            this.map.setStyle(OSM_RASTER_STYLE);
+          } catch (err) {
+            console.error('[Mapbox] Failed switching to OSM fallback style:', err);
+          }
+        };
+
+        // If Mapbox vector tiles fail with 401/403 or network error, switch to raster fallback
+        this.map.on('error', (e) => {
+          if (!fallbackTriggered && initialStyle !== OSM_RASTER_STYLE) {
+            triggerRasterFallback();
+          }
+        });
+
+        // Watchdog: If vector style hasn't rendered within 2.5 seconds, automatically apply raster fallback
+        if (initialStyle !== OSM_RASTER_STYLE) {
+          this.styleWatchdogTimeout = setTimeout(() => {
+            if (!this.map?.isStyleLoaded() && !fallbackTriggered) {
+              triggerRasterFallback();
+            }
+          }, 2500);
+        }
+
+        this.map.on('style.load', () => {
+          if (this.styleWatchdogTimeout) {
+            clearTimeout(this.styleWatchdogTimeout);
+          }
+          this.map?.resize();
+          this.renderMapboxMarkers();
+        });
 
         this.map.on('load', () => {
           this.map?.resize();
@@ -192,9 +238,8 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
         });
 
         // Ensure canvas recalculates size after layout settling
-        setTimeout(() => {
-          this.map?.resize();
-        }, 300);
+        setTimeout(() => this.map?.resize(), 300);
+        setTimeout(() => this.map?.resize(), 800);
 
         if (typeof ResizeObserver !== 'undefined' && this.mapContainer?.nativeElement) {
           this.resizeObserver = new ResizeObserver(() => {
@@ -203,10 +248,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
           this.resizeObserver.observe(this.mapContainer.nativeElement);
         }
       } catch (err) {
-        console.warn('Mapbox initialization fallback:', err);
-        this.ngZone.run(() => {
-          this.hasValidMapboxToken = false;
-        });
+        console.warn('Mapbox initialization fallback error:', err);
       }
     });
   }
@@ -252,7 +294,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
       this.activePins.set(pins);
 
-      if (this.map && this.hasValidMapboxToken) {
+      if (this.map) {
         this.renderMapboxMarkers();
       }
     } catch {
@@ -274,18 +316,19 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
         // Custom DOM element for marker
         const el = document.createElement('div');
         el.className = 'bh-custom-map-pin';
-        el.style.width = '34px';
-        el.style.height = '34px';
+        el.style.width = '36px';
+        el.style.height = '36px';
         el.style.borderRadius = '50%';
         el.style.backgroundColor = '#C85A32';
         el.style.border = '2px solid #FFFFFF';
-        el.style.boxShadow = '0 4px 12px rgba(200, 90, 50, 0.4)';
+        el.style.boxShadow = '0 4px 14px rgba(200, 90, 50, 0.45)';
         el.style.cursor = 'pointer';
         el.style.display = 'flex';
         el.style.alignItems = 'center';
         el.style.justifyContent = 'center';
         el.style.color = '#FFFFFF';
-        el.style.fontSize = '14px';
+        el.style.fontSize = '15px';
+        el.style.zIndex = '15';
         el.innerText = '📍';
 
         // Marker click returns to Angular zone
@@ -296,13 +339,13 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
         });
 
         const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 4px;">
-            <strong style="font-size: 13px; color: #231F20;">${pin.district}</strong>
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 6px;">
+            <strong style="font-size: 13px; color: #231F20; display: block; margin-bottom: 2px;">${pin.district}</strong>
             <div style="font-size: 11px; color: #6E665F;">${pin.city}, ${pin.country}</div>
           </div>
         `);
 
-        const marker = new mapboxgl.Marker(el)
+        const marker = new mapboxgl.Marker({ element: el })
           .setLngLat([pin.lng, pin.lat])
           .setPopup(popup)
           .addTo(this.map!);
