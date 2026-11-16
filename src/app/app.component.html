@@ -1,25 +1,10 @@
 <div class="min-h-screen bg-bg-paper text-ink flex flex-col font-sans">
-  <!-- Top Header with Brand, Live Counters (🔒 Padlock & ✋ Hand), About Modal, Auth -->
+  <!-- Top Header with Brand, Live Counters (🔒 Padlock & ✋ Hand), About Modal, Auth / Cabinet Link -->
   <app-top-header />
 
-  <!-- Main Content Layout -->
+  <!-- Main Content Layout (Routes: Main Board Canvas & User Cabinet) -->
   <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
-    <!-- ROW 1: Global Wishes Panel (FR-2) -->
-    <app-wishes-panel />
-
-    <!-- ROW 2: Creation Action Buttons & Location Autocomplete Filters (FR-3, FR-4) -->
-    <app-controls-filter-bar />
-
-    <!-- ROW 3: Central 25-Card Stratified Collage Canvas & Expanded Modal (FR-5) -->
-    <app-collage-canvas />
-
-    <!-- Router View (Main Board Canvas & Cabinets) -->
     <router-outlet />
-
-    <!-- Bottom: Interactive Mapbox District Map (FR-4) -->
-    <div class="w-full">
-      <app-mapbox-view />
-    </div>
   </main>
 
   <!-- Global Auth Modal Interceptor -->
