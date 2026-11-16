@@ -8,16 +8,23 @@ export type AuthModalMode = 'signin' | 'signup';
 export class AuthModalService {
   readonly isOpen = signal<boolean>(false);
   readonly mode = signal<AuthModalMode>('signin');
+  readonly promptMessage = signal<string | null>(null);
   private pendingCallback: (() => void) | null = null;
 
-  open(mode: AuthModalMode = 'signin', onAuthenticatedAction?: () => void): void {
+  open(mode: AuthModalMode = 'signin', onAuthenticatedAction?: () => void, message?: string): void {
     this.mode.set(mode);
+    this.promptMessage.set(message ?? null);
     this.pendingCallback = onAuthenticatedAction ?? null;
     this.isOpen.set(true);
   }
 
+  openModal(message?: string, onAuthenticatedAction?: () => void): void {
+    this.open('signin', onAuthenticatedAction, message);
+  }
+
   close(): void {
     this.isOpen.set(false);
+    this.promptMessage.set(null);
     this.pendingCallback = null;
   }
 

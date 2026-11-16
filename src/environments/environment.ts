@@ -1,10 +1,5 @@
-export interface Environment {
-  production: boolean;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  mapboxAccessToken: string;
-  r2PublicBaseUrl: string;
-}
+import { Environment } from './environment.model';
+export * from './environment.model';
 
 export const environment: Environment = {
   production: true,

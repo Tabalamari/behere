@@ -1,113 +1,21 @@
 <div class="min-h-screen bg-bg-paper text-ink flex flex-col font-sans">
-  <!-- Minimal Top Bar Preview (Full Header will be built in Phase 3) -->
-  <header class="w-full max-w-7xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between border-b border-border-custom">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center font-serif font-bold text-xl shadow-sm">
-        BH
-      </div>
-      <div>
-        <h1 class="font-serif text-xl sm:text-2xl font-bold tracking-tight text-ink">Be HERE</h1>
-        <p class="text-xs text-muted -mt-0.5">Острівець спогадів твого району</p>
-      </div>
-    </div>
+  <!-- Top Header with Brand, Live Counters (🔒 Padlock & ✋ Hand), About Modal, Auth -->
+  <app-top-header />
 
-    <!-- Auth User State / Actions -->
-    <div class="flex items-center gap-2 sm:gap-3">
-      @if (authService.isAuthenticated()) {
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-border-custom shadow-sm text-ink flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            {{ authService.currentUser()?.nickname }}
-          </span>
-          <button 
-            type="button" 
-            (click)="signOut()"
-            class="text-xs font-medium text-muted hover:text-accent transition px-2 py-1"
-          >
-            Вийти
-          </button>
-        </div>
-      } @else {
-        <button 
-          type="button" 
-          (click)="openSignIn()"
-          class="text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg bg-white hover:bg-bg-paper border border-border-custom text-ink shadow-sm transition"
-        >
-          Увійти
-        </button>
-        <button 
-          type="button" 
-          (click)="openSignUp()"
-          class="text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg bg-accent hover:bg-[#b04d29] text-white shadow-sm transition"
-        >
-          Реєстрація
-        </button>
-      }
-    </div>
-  </header>
+  <!-- Main Content Layout -->
+  <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
+    <!-- ROW 1: Global Wishes Panel (FR-2) -->
+    <app-wishes-panel />
 
-  <!-- Main Content Area -->
-  <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8 flex flex-col items-center">
-    <div class="w-full bg-white rounded-2xl border border-border-custom shadow-sm p-6 sm:p-8 text-center max-w-2xl mb-8">
-      <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-accent-soft text-accent mb-3">
-        Phase 1: Task 1.2 Ready
-      </span>
-      <h2 class="font-serif text-2xl sm:text-3xl font-bold text-ink mb-3">
-        Система автентифікації та захисту дій гостя
-      </h2>
-      <p class="text-sm text-muted mb-6 leading-relaxed">
-        Створено клієнтський сервіс Supabase, реактивні сигнали <code class="bg-bg-paper px-1.5 py-0.5 rounded text-accent font-mono text-xs">currentUser()</code> та <code class="bg-bg-paper px-1.5 py-0.5 rounded text-accent font-mono text-xs">isAuthenticated()</code>, а також перехоплювач <code class="bg-bg-paper px-1.5 py-0.5 rounded text-accent font-mono text-xs">requireAuth()</code>.
-      </p>
-
-      <!-- Testing Guest Interception (Protected Actions) -->
-      <div class="p-4 bg-bg-paper rounded-xl border border-border-custom mb-6 text-left">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-muted mb-2">
-          Перевірка перехоплення гостя (Protected Action Guard):
-        </h3>
-        <p class="text-xs text-muted mb-4">
-          Натисніть кнопку нижче без авторизації — дію буде перехоплено і відкриється модальне вікно входу/реєстрації. Після авторизації дія виконається автоматично.
-        </p>
-        <div class="flex flex-wrap gap-2">
-          <button 
-            type="button"
-            (click)="testProtectedAction('Add Photo')"
-            class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white hover:bg-neutral-50 text-ink border border-border-custom shadow-xs transition flex items-center gap-1.5"
-          >
-            📸 Add Photo
-          </button>
-          <button 
-            type="button"
-            (click)="testProtectedAction('Add Wish')"
-            class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white hover:bg-neutral-50 text-ink border border-border-custom shadow-xs transition flex items-center gap-1.5"
-          >
-            ✨ Add Wish
-          </button>
-          <button 
-            type="button"
-            (click)="testProtectedAction('Add Letter')"
-            class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white hover:bg-neutral-50 text-ink border border-border-custom shadow-xs transition flex items-center gap-1.5"
-          >
-            ✉️ Add Letter
-          </button>
-        </div>
-      </div>
-
-      <!-- Current State Display -->
-      <div class="text-xs font-mono bg-neutral-900 text-neutral-200 p-4 rounded-xl text-left overflow-x-auto">
-        <div class="text-emerald-400 font-bold mb-1">// Реактивний стан сесії (Angular Signals):</div>
-        <div>isAuthenticated: <span class="text-amber-300 font-bold">{{ authService.isAuthenticated() }}</span></div>
-        <div>currentUser: <span class="text-sky-300">{{ authService.currentUser() | json }}</span></div>
-      </div>
-    </div>
-
+    <!-- Router View (Main Board Canvas & Cabinets) -->
     <router-outlet />
 
-    <!-- Interactive Mapbox District Map at bottom of main screen -->
-    <div class="w-full mt-8">
+    <!-- Bottom: Interactive Mapbox District Map (FR-4) -->
+    <div class="w-full">
       <app-mapbox-view />
     </div>
   </main>
 
-  <!-- Global Auth Modal -->
+  <!-- Global Auth Modal Interceptor -->
   <app-auth-modal />
 </div>

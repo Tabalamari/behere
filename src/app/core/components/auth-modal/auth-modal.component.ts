@@ -38,6 +38,13 @@ import { AuthModalService, AuthModalMode } from '../../services/auth-modal.servi
             </p>
           </div>
 
+          @if (modalService.promptMessage()) {
+            <div class="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+              <span>🔒</span>
+              <span>{{ modalService.promptMessage() }}</span>
+            </div>
+          }
+
           <!-- Mode Toggle Tabs -->
           <div class="flex rounded-lg bg-bg-paper p-1 mb-6 border border-border-custom">
             <button 
