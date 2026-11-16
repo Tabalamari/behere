@@ -2,20 +2,23 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthModalComponent } from './core/components/auth-modal/auth-modal.component';
+import { MapboxViewComponent } from './features/main-board/mapbox-view/mapbox-view.component';
 import { AuthService } from './core/services/auth.service';
 import { AuthModalService } from './core/services/auth-modal.service';
+import { BoardStateService } from './core/services/board-state.service';
 import { requireAuth } from './core/guards/guest-prompt.guard';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, AuthModalComponent],
+  imports: [RouterOutlet, CommonModule, AuthModalComponent, MapboxViewComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
   readonly authService = inject(AuthService);
   readonly authModalService = inject(AuthModalService);
+  readonly boardState = inject(BoardStateService);
 
   openSignIn(): void {
     this.authModalService.open('signin');
