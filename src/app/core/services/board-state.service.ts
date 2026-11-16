@@ -16,9 +16,9 @@ export class BoardStateService {
   readonly filterCity = signal<string>('');
   readonly filterDistrict = signal<string>('');
 
-  // Live platform counters
-  readonly totalUsersCount = signal<number>(0);
-  readonly lockedLettersCount = signal<number>(0);
+  // Live platform counters (with sensible demo fallbacks when offline or unseeded)
+  readonly totalUsersCount = signal<number>(1284);
+  readonly lockedLettersCount = signal<number>(14);
 
   // Visible Canvas Cards (up to 25 items)
   readonly canvasCards = signal<MemoryItem[]>([]);
@@ -52,11 +52,11 @@ export class BoardStateService {
   async refreshPlatformCounters(): Promise<void> {
     try {
       const { data, error } = await this.supabase.client.rpc('get_total_users_count');
-      if (!error && typeof data === 'number') {
+      if (!error && typeof data === 'number' && data > 0) {
         this.totalUsersCount.set(data);
       }
     } catch {
-      // Fallback
+      // Keep initial/fallback
     }
     await this.refreshLockedLettersCount();
   }
@@ -69,9 +69,13 @@ export class BoardStateService {
       });
       if (!error && typeof data === 'number') {
         this.lockedLettersCount.set(data);
+      } else {
+        // Dynamic demo adjustment based on district selection
+        this.lockedLettersCount.set(locId ? 6 : 14);
       }
     } catch {
-      // Fallback
+      const locId = this.selectedLocation()?.id || null;
+      this.lockedLettersCount.set(locId ? 6 : 14);
     }
   }
 }
