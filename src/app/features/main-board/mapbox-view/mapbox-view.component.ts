@@ -29,7 +29,7 @@ import { environment } from '../../../../environments/environment';
         <div class="flex items-center gap-2">
           <span class="text-base">🗺️</span>
           <h3 class="font-serif font-bold text-sm text-ink">
-            Мапа районів зі спогадами (1 пін = 1 район)
+            District Memories Map (1 pin = 1 district)
           </h3>
         </div>
         <div class="flex items-center gap-2 text-xs text-muted">
@@ -43,10 +43,10 @@ import { environment } from '../../../../environments/environment';
               (click)="resetSelection()"
               class="hover:text-accent underline text-[11px]"
             >
-              Скинути вибір
+              Reset selection
             </button>
           } @else {
-            <span class="text-muted">Оберіть пін на мапі або зі списку</span>
+            <span class="text-muted">Select a pin on the map or from the list below</span>
           }
         </div>
       </div>
@@ -62,15 +62,15 @@ import { environment } from '../../../../environments/environment';
             <div class="w-full max-w-lg bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-border-custom text-center">
               <div class="text-2xl mb-1">📍</div>
               <h4 class="font-serif font-bold text-sm text-ink mb-1">
-                Інтерактивна мапа районів (Mapbox Preview Mode)
+                Interactive District Map (Mapbox Preview Mode)
               </h4>
               <p class="text-xs text-muted mb-3">
-                Для підключення повного 3D-шару додайте <code class="bg-bg-paper px-1 py-0.5 rounded font-mono text-accent">mapboxAccessToken</code> у <code class="font-mono text-xs">environment.ts</code>.
+                To connect the full 3D layer, configure <code class="bg-bg-paper px-1 py-0.5 rounded font-mono text-accent">mapboxAccessToken</code> in <code class="font-mono text-xs">environment.ts</code>.
               </p>
               
               <!-- Interactive fallback pins -->
               <div class="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-border-custom">
-                <span class="text-xs font-semibold text-ink">Доступні райони:</span>
+                <span class="text-xs font-semibold text-ink">Available Districts:</span>
                 @for (pin of activePins(); track pin.id) {
                   <button
                     type="button"
@@ -196,24 +196,26 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
       if (!error && data && data.length > 0) {
         pins = data as LocationPin[];
       } else {
-        // Fallback seed pins (per verification criteria: 2 test locations)
+        // Fallback seed pins (Brighton archive)
         pins = [
           {
-            id: '11111111-1111-1111-1111-111111111111',
-            country: 'Україна',
-            city: 'Київ',
-            district: 'Поділ',
-            lat: 50.4667,
-            lng: 30.5167,
+            id: 'loc-1',
+            osm_id: 1001,
+            country: 'United Kingdom',
+            city: 'Brighton',
+            district: 'Preston Park',
+            lat: 50.8409,
+            lng: -0.1472,
             memories_count: 8
           },
           {
-            id: '22222222-2222-2222-2222-222222222222',
-            country: 'Україна',
-            city: 'Київ',
-            district: 'Печерськ',
-            lat: 50.4372,
-            lng: 30.5489,
+            id: 'loc-2',
+            osm_id: 1002,
+            country: 'United Kingdom',
+            city: 'Brighton',
+            district: 'North Laine',
+            lat: 50.8267,
+            lng: -0.1388,
             memories_count: 5
           }
         ];
