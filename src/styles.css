@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-paper: #FAF7F2;
+  --bg-card: #FFFFFF;
+  --ink: #231F20;
+  --muted: #6E665F;
+  --accent: #C85A32;
+  --accent-soft: #F7E6DF;
+  --teal: #2A6F68;
+  --border: #E5DDD3;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-paper);
+  color: var(--ink);
+  margin: 0;
+  padding: 0;
+}
