@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Be HERE — Interactive Desktop & Mobile Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-paper: #FAF7F2;
+            --bg-card: #FFFFFF;
+            --ink: #231F20;
+            --muted: #6E665F;
+            --accent: #C85A32;
+            --accent-soft: #F7E6DF;
+            --teal: #2A6F68;
+            --border: #E5DDD3;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #1E1C1A;
+            color: var(--ink);
+            margin: 0;
+        }
+
+        .font-serif-display {
+            font-family: 'Fraunces', serif;
+        }
+
+        /* ================= VIEWPORT SHELL ================= */
+        #viewport-wrapper {
+            transition: width 0.3s ease;
+            background-color: var(--bg-paper);
+            min-height: calc(100vh - 52px);
+        }
+
+        #viewport-wrapper.desktop-mode {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        #viewport-wrapper.mobile-mode {
+            width: 393px;
+            height: 844px;
+            min-height: 844px;
+            margin: 20px auto;
+            border-radius: 44px;
+            border: 10px solid #111;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65);
+            position: relative;
+        }
+
+        /* ================= DETERMINISTIC LAYOUTS (NO TAILWIND BREAKPOINT CONFLICTS) ================= */
+        /* Header */
+        .desktop-mode .bh-header {
+            padding: 16px 32px;
+        }
+
+        .mobile-mode .bh-header {
+            padding: 12px 16px;
+        }
+
+        .desktop-mode .bh-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .mobile-mode .bh-header-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .bh-header-right {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mobile-mode .bh-brand-sub {
+            display: none;
+        }
+
+        /* Main Container */
+        .desktop-mode .bh-main {
+            padding: 20px 32px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .mobile-mode .bh-main {
+            padding: 14px 16px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* Row 2: Action Buttons + Location Filters */
+        .desktop-mode .bh-actions-and-filters {
+            display: grid;
+            grid-template-columns: 5fr 7fr;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .mobile-mode .bh-actions-and-filters {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .bh-create-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        .mobile-mode .bh-create-row button {
+            padding: 9px 4px;
+            font-size: 11px;
+        }
+
+        .desktop-mode .bh-geo-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        .mobile-mode .bh-geo-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        .mobile-mode .bh-geo-district {
+            grid-column: 1 / -1;
+        }
+
+        .bh-geo-label {
+            display: none;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 3px;
+        }
+
+        .mobile-mode .bh-geo-label {
+            display: block;
+        }
+
+        .bh-input {
+            width: 100%;
+            padding: 9px 11px;
+            border-radius: 12px;
+            background: #FFFFFF;
+            border: 1px solid #D8CEC2;
+            font-size: 12px;
+            color: var(--ink);
+            outline: none;
+        }
+
+        .bh-input:focus {
+            border-color: var(--accent);
+        }
+
+        /* ================= STRATIFIED 5x5 COLLAGE CANVAS ================= */
+        .collage-board {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background:
+                radial-gradient(circle at 20% 25%, rgba(200, 90, 50, 0.05), transparent 45%),
+                radial-gradient(circle at 80% 75%, rgba(42, 111, 104, 0.06), transparent 50%),
+                #F3EDE4;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .mobile-mode .collage-board {
+            height: 500px;
+        }
+
+        .memory-card {
+            position: absolute;
+            width: 17.5%;
+            height: 17.5%;
+            background: #FFF;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: 0 4px 12px rgba(35, 31, 32, 0.12);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-mode .memory-card {
+            width: 19.5%;
+            height: 16.5%;
+            padding: 3px;
+        }
+
+        .memory-card:hover,
+        .memory-card.mobile-focused {
+            transform: scale(1.32) rotate(0deg) !important;
+            z-index: 40 !important;
+            box-shadow: 0 16px 32px rgba(35, 31, 32, 0.24);
+            border-color: var(--accent);
+        }
+
+        /* Map Grid Pattern */
+        .stylized-map {
+            background-color: #E7EFEA;
+            background-image:
+                linear-gradient(to right, rgba(42, 111, 104, 0.08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(42, 111, 104, 0.08) 1px, transparent 1px);
+            background-size: 36px 36px;
+        }
+
+        @keyframes pulseRing {
+            0% {
+                transform: scale(0.9);
+                opacity: 0.8;
+            }
+
+            70% {
+                transform: scale(1.9);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1.9);
+                opacity: 0;
+            }
+        }
+
+        .pin-pulse::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 9999px;
+            background: rgba(200, 90, 50, 0.45);
+            animation: pulseRing 2.2s infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #CFC5B9;
+            border-radius: 99px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOP MOCKUP JOURNEY & VIEWPORT CONTROLLER -->
+    <div
+        class="sticky top-0 z-50 bg-[#141312] text-white border-b border-stone-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+            <span
+                class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold tracking-wide uppercase">Prototype</span>
+            <span class="font-medium text-stone-300">Be HERE — Interactive User Journey</span>
+        </div>
+
+        <!-- Journey Step Quick-Links -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <button onclick="goToPage('home')"
+                class="px-2.5 py-1 rounded-md bg-stone-800 hover:bg-stone-700 text-white font-medium transition">1. Main
+                Board</button>
+            <button onclick="openCreateModal('photo')"
+                class="px-2.5 py-1 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 transition">2. Add
+                Memory</button>
+            <button onclick="openAuthModal()"
+                class="px-2.5 py-1 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 transition">3. Sign
+                In</button>
+            <button onclick="goToPage('cabinet')"
+                class="px-2.5 py-1 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 transition">4.
+                Cabinet</button>
+            <button onclick="goToPage('about')"
+                class="px-2.5 py-1 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 transition">5.
+                About</button>
+        </div>
+
+        <!-- Desktop / Mobile Switcher -->
+        <div class="flex items-center bg-stone-900 p-1 rounded-lg border border-stone-700">
+            <button onclick="setViewport('desktop')" id="btn-desktop"
+                class="px-3 py-1 rounded-md bg-[#C85A32] text-white font-semibold transition flex items-center gap-1.5">
+                Desktop
+            </button>
+            <button onclick="setViewport('mobile')" id="btn-mobile"
+                class="px-3 py-1 rounded-md text-stone-400 hover:text-white font-semibold transition flex items-center gap-1.5">
+                Mobile
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APPLICATION VIEWPORT -->
+    <div id="viewport-wrapper" class="desktop-mode">
+
+        <!-- Mobile Notch Bar -->
+        <div id="mobile-status-bar"
+            class="hidden sticky top-0 z-30 bg-[#FAF7F2]/95 backdrop-blur px-6 pt-3 pb-1.5 flex justify-between items-center text-[11px] font-semibold text-stone-700">
+            <span>10:20</span>
+            <div class="w-24 h-4 bg-black rounded-full"></div>
+            <span>5G • 100%</span>
+        </div>
+
+        <!-- ================= HEADER BAR (FR-1) ================= -->
+        <header class="bh-header border-b border-[#E5DDD3] bg-[#FAF7F2]/95 backdrop-blur sticky top-0 z-20">
+            <div class="bh-header-bar">
+                <!-- Logo & Title -->
+                <div onclick="resetToGlobal()" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-[#C85A32] text-white flex items-center justify-center shadow-sm shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"
+                                d="M12 21s-6-5.686-6-10a6 6 0 1112 0c0 4.314-6 10-6 10z" />
+                            <circle cx="12" cy="11" r="2.2" fill="currentColor" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-serif-display text-xl font-bold tracking-tight text-[#231F20] leading-none">Be
+                            HERE</h1>
+                        <p class="bh-brand-sub text-[11px] text-[#6E665F] mt-0.5">Hyperlocal Collective Memory</p>
+                    </div>
+                </div>
+
+                <!-- Counters & Navigation -->
+                <div class="bh-header-right">
+                    <div class="flex items-center gap-1.5">
+                        <div title="Locked Time-Capsule Letters in selected location"
+                            class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100/80 border border-amber-300/80 text-amber-900 text-xs font-semibold">
+                            <span>🔒</span>
+                            <span id="locked-counter">14</span>
+                        </div>
+                        <div title="Total registered users"
+                            class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100/80 border border-rose-200 text-rose-900 text-xs font-semibold">
+                            <span>✋</span>
+                            <span id="users-counter">1,284</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="goToPage('about')"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6E665F] hover:text-[#231F20] hover:bg-stone-200/60 transition">
+                            About
+                        </button>
+                        <button id="header-auth-btn" onclick="handleHeaderAuthClick()"
+                            class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#231F20] text-white hover:bg-[#3A3537] transition shadow-sm whitespace-nowrap">
+                            SignIn
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Walkthrough Tip Banner -->
+            <div id="journey-tip"
+                class="mt-3 px-3 py-2 rounded-xl bg-[#F7E6DF] border border-[#E8C5B8] text-[11px] text-[#6B2D16] flex items-center justify-between gap-2">
+                <div>
+                    <strong class="font-semibold">Walkthrough Tip:</strong>
+                    <span id="journey-tip-text">You are browsing as a <b>Guest</b>. Try "Wish for me", tap any card on
+                        the Canvas, filter by District on the Map, or tap <b>Add Photo / Letter</b> to test
+                        Sign-In.</span>
+                </div>
+                <button onclick="document.getElementById('journey-tip').classList.add('hidden')"
+                    class="text-[#6B2D16]/70 hover:text-[#6B2D16] font-bold px-1 shrink-0">✕</button>
+            </div>
+        </header>
+
+        <!-- ================= PAGE 1: MAIN BOARD (HOME) ================= -->
+        <main id="page-home" class="bh-main">
+
+            <!-- ROW 1: WISHES BAR (FR-2) -->
+            <section class="bg-white border border-[#E5DDD3] rounded-2xl p-3.5 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <button onclick="getRandomWish()"
+                            class="px-3.5 py-2 rounded-xl bg-[#2A6F68] hover:bg-[#215953] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                            <span>✨</span> Wish for me
+                        </button>
+                        <button onclick="openWishModal()"
+                            class="px-3.5 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D8CEC2] text-[#231F20] text-xs font-semibold transition flex items-center gap-1.5">
+                            <span>💌</span> Add Wish
+                        </button>
+                    </div>
+                    <span class="text-[11px] text-[#6E665F]">Global warmth pool • Not tied to location</span>
+                </div>
+
+                <div id="wish-display-box"
+                    class="hidden mt-3 pt-3 border-t border-dashed border-[#E5DDD3] flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-2">
+                        <span class="text-base mt-0.5">🌿</span>
+                        <div>
+                            <p id="wish-text" class="text-xs font-medium text-[#231F20] italic"></p>
+                            <p id="wish-author" class="text-[11px] text-[#6E665F] mt-0.5"></p>
+                        </div>
+                    </div>
+                    <button onclick="getRandomWish()"
+                        class="text-[11px] text-[#2A6F68] font-semibold hover:underline shrink-0">Next →</button>
+                </div>
+            </section>
+
+            <!-- ROW 2: CREATE CONTENT & GEO FILTERS (COMPLETELY SEPARATED STACK ON MOBILE) -->
+            <section class="bh-actions-and-filters">
+                <!-- Create Buttons -->
+                <div class="bh-create-row">
+                    <button onclick="openCreateModal('photo')"
+                        class="py-2.5 px-2 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] text-white text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1">
+                        <span>📷</span> Add Photo
+                    </button>
+                    <button onclick="openCreateModal('video')"
+                        class="py-2.5 px-2 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] text-white text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1">
+                        <span>🎥</span> Add Video
+                    </button>
+                    <button onclick="openCreateModal('letter')"
+                        class="py-2.5 px-2 rounded-xl bg-[#231F20] hover:bg-[#3A3537] text-white text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1">
+                        <span>✉️</span> Add Letter
+                    </button>
+                </div>
+
+                <!-- Geo Filters (Overpass API) -->
+                <div class="bh-geo-row">
+                    <div>
+                        <label class="bh-geo-label">Country</label>
+                        <input id="filter-country" type="text" value="United Kingdom" placeholder="Country..."
+                            class="bh-input" />
+                    </div>
+                    <div>
+                        <label class="bh-geo-label">City</label>
+                        <input id="filter-city" type="text" value="Brighton & Hove" placeholder="City..."
+                            class="bh-input" />
+                    </div>
+                    <div class="bh-geo-district">
+                        <label class="bh-geo-label">District</label>
+                        <select id="filter-district" onchange="selectDistrict(this.value)" class="bh-input font-medium">
+                            <option value="all">All Districts (Latest 25)</option>
+                            <option value="preston">Preston Park</option>
+                            <option value="north-laine">North Laine</option>
+                            <option value="hove-seafront">Hove Seafront</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ROW 3: CENTRAL COLLAGE CANVAS (FR-5: 25 Cards, <=25% Overlap) -->
+            <section>
+                <div class="flex flex-wrap items-center justify-between gap-1 mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-[#C85A32]"></span>
+                        <h2 id="canvas-heading" class="text-xs font-bold uppercase tracking-wider text-[#6E665F]">
+                            Latest 25 Memories Across All Locations
+                        </h2>
+                    </div>
+                    <span class="text-[11px] text-[#6E665F]">Tap/Hover to peek • Click to expand</span>
+                </div>
+
+                <div id="collage-canvas" class="collage-board"></div>
+
+                <!-- AI HISTORICAL AUDIO STORY BAR (FR-6) -->
+                <div class="mt-3 bg-white border border-[#E5DDD3] rounded-2xl p-3.5 shadow-sm flex flex-col gap-3">
+                    <div class="flex items-center gap-3">
+                        <button id="audio-play-btn" onclick="toggleAudioStory()"
+                            class="w-10 h-10 rounded-full bg-[#231F20] hover:bg-[#C85A32] text-white flex items-center justify-center transition shrink-0 shadow">
+                            <span id="audio-play-icon" class="text-base ml-0.5">▶</span>
+                        </button>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="text-xs font-bold text-[#231F20]" id="audio-title">AI Historical Story:
+                                    Brighton & Hove</span>
+                                <span id="audio-cache-badge"
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">Cached
+                                    • Verified History</span>
+                            </div>
+                            <p class="text-[11px] text-[#6E665F] mt-0.5">
+                                Synthesized strictly from documented historical facts tied to visible landmarks on the
+                                Canvas.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 h-2 bg-[#EFE9E0] rounded-full overflow-hidden">
+                            <div id="audio-progress" class="h-full bg-[#C85A32] w-0 transition-all duration-300"></div>
+                        </div>
+                        <button onclick="toggleTranscript()"
+                            class="text-xs font-semibold text-[#2A6F68] hover:underline shrink-0">
+                            Transcript
+                        </button>
+                    </div>
+                </div>
+
+                <div id="audio-transcript-box"
+                    class="hidden mt-2 p-4 rounded-2xl bg-[#F4EFE6] border border-[#E2D8CA] text-xs text-[#3B3531] leading-relaxed">
+                    <strong class="block text-[#231F20] mb-1">Historical Narration (Gemini 2.5 Flash • Temp 0.2 •
+                        ElevenLabs):</strong>
+                    <span id="audio-transcript-text"></span>
+                </div>
+            </section>
+
+            <!-- ROW 4: INTERACTIVE DISTRICT MAP (FR-4) -->
+            <section>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-[#6E665F]">
+                        Interactive District Map (1 Pin = 1 District)
+                    </h3>
+                    <button onclick="resetToGlobal()" class="text-xs font-semibold text-[#C85A32] hover:underline">Reset
+                        View</button>
+                </div>
+
+                <div
+                    class="relative w-full h-60 rounded-2xl border border-[#D4DDD7] stylized-map overflow-hidden shadow-inner">
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 800 300"
+                        preserveAspectRatio="none">
+                        <path d="M0,255 Q240,235 480,260 T800,245 L800,300 L0,300 Z" fill="#CBE0E6" opacity="0.75" />
+                        <path d="M120,0 Q180,140 150,255" stroke="#FFFFFF" stroke-width="6" fill="none" opacity="0.8" />
+                        <path d="M410,0 Q390,130 430,255" stroke="#FFFFFF" stroke-width="7" fill="none"
+                            opacity="0.85" />
+                        <path d="M640,0 Q610,150 660,255" stroke="#FFFFFF" stroke-width="5" fill="none"
+                            opacity="0.75" />
+                        <path d="M0,120 Q400,95 800,135" stroke="#FFFFFF" stroke-width="5" fill="none" opacity="0.75" />
+                    </svg>
+
+                    <!-- District Pin 1 -->
+                    <button onclick="selectDistrict('preston')" style="top: 25%; left: 25%;"
+                        class="group absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                        <div id="pin-preston"
+                            class="relative w-8 h-8 rounded-full bg-[#C85A32] text-white font-bold text-xs flex items-center justify-center shadow-lg border-2 border-white pin-pulse">
+                            9
+                        </div>
+                        <span
+                            class="mt-1 px-2 py-0.5 rounded-md bg-white/95 shadow text-[10px] font-bold text-[#231F20] whitespace-nowrap">
+                            Preston Park (🔒 6)
+                        </span>
+                    </button>
+
+                    <!-- District Pin 2 -->
+                    <button onclick="selectDistrict('north-laine')" style="top: 48%; left: 52%;"
+                        class="group absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                        <div id="pin-north-laine"
+                            class="relative w-8 h-8 rounded-full bg-[#2A6F68] text-white font-bold text-xs flex items-center justify-center shadow-lg border-2 border-white">
+                            10
+                        </div>
+                        <span
+                            class="mt-1 px-2 py-0.5 rounded-md bg-white/95 shadow text-[10px] font-bold text-[#231F20] whitespace-nowrap">
+                            North Laine (🔒 5)
+                        </span>
+                    </button>
+
+                    <!-- District Pin 3 -->
+                    <button onclick="selectDistrict('hove-seafront')" style="top: 68%; left: 75%;"
+                        class="group absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                        <div id="pin-hove-seafront"
+                            class="relative w-8 h-8 rounded-full bg-[#2A6F68] text-white font-bold text-xs flex items-center justify-center shadow-lg border-2 border-white">
+                            6
+                        </div>
+                        <span
+                            class="mt-1 px-2 py-0.5 rounded-md bg-white/95 shadow text-[10px] font-bold text-[#231F20] whitespace-nowrap">
+                            Hove Seafront (🔒 3)
+                        </span>
+                    </button>
+
+                    <div
+                        class="absolute bottom-2.5 left-3 px-2.5 py-1 rounded-lg bg-white/85 backdrop-blur text-[10px] text-[#6E665F] font-medium">
+                        Mapbox GL JS • Tap a District pin to filter Canvas & 🔒 counter
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ================= PAGE 2: USER PERSONAL CABINET (FR-7) ================= -->
+        <section id="page-cabinet" class="hidden bh-main">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5DDD3] pb-4">
+                <div>
+                    <button onclick="goToPage('home')"
+                        class="text-xs font-semibold text-[#C85A32] hover:underline mb-1 inline-block">← Back to
+                        District Canvas</button>
+                    <h2 class="font-serif-display text-2xl font-bold text-[#231F20]">Personal Cabinet</h2>
+                    <p class="text-xs text-[#6E665F]">Private time-capsules ("For Myself"), countdown timers, and
+                        personal archive</p>
+                </div>
+
+                <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-[#E5DDD3]">
+                    <span class="text-xs text-[#6E665F] pl-1">Nickname:</span>
+                    <input id="cabinet-nickname-input" type="text" value="Olena_K"
+                        class="px-2.5 py-1 rounded-lg bg-[#FAF7F2] border border-[#D8CEC2] text-xs font-semibold w-28" />
+                    <button onclick="saveNickname()"
+                        class="px-3 py-1 rounded-lg bg-[#231F20] text-white text-xs font-semibold hover:bg-[#C85A32] transition">Save</button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-sm font-bold text-[#231F20] flex items-center gap-2">
+                    <span>🔓</span> Opened Private Letters ("For Myself" — Visible Only to You)
+                </h3>
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="bg-white border border-[#E5DDD3] rounded-2xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between text-[11px] text-[#6E665F] mb-1.5">
+                            <span>📍 Brighton & Hove • Preston Park</span>
+                            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Unlocked
+                                Today</span>
+                        </div>
+                        <h4 class="font-serif-display font-bold text-base mb-1">Note to my future self after moving</h4>
+                        <p class="text-xs text-[#3B3531] leading-relaxed">
+                            "Remember how nervous you felt sitting under the old elm trees in Preston Park with a
+                            takeaway coffee? You finally started building your dream project. Keep going."
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-sm font-bold text-[#231F20] flex items-center gap-2">
+                    <span>⏳</span> Sealed Time Capsules (Text hidden until Unlock Date)
+                </h3>
+                <div id="cabinet-locked-list" class="grid grid-cols-1 gap-3">
+                    <div class="bg-[#F4EFE6] border border-[#E2D8CA] rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <span
+                                class="text-[10px] uppercase tracking-wider font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded">Private
+                                • For Myself</span>
+                            <h4 class="font-bold text-sm mt-1">5-Year Anniversary Capsule</h4>
+                            <p class="text-xs text-[#6E665F]">📍 North Laine • Opens: 2029-05-14</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-[#231F20]">910 days</div>
+                            <div class="text-[10px] text-[#6E665F]">remaining</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-sm font-bold text-[#231F20] flex items-center gap-2">
+                    <span>🖼️</span> My Uploaded Photos & Videos
+                </h3>
+                <div id="cabinet-my-media" class="grid grid-cols-2 gap-3"></div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: ABOUT PAGE ================= -->
+        <section id="page-about" class="hidden bh-main max-w-3xl mx-auto">
+            <button onclick="goToPage('home')" class="text-xs font-semibold text-[#C85A32] hover:underline">← Back to
+                Main Board</button>
+            <h2 class="font-serif-display text-2xl font-bold text-[#231F20]">About Be HERE</h2>
+            <p class="text-xs text-[#3B3531] leading-relaxed">
+                <strong>Be HERE</strong> is a hyperlocal web platform dedicated to preserving collective memory,
+                everyday stories, and the living atmosphere of cities and neighborhoods. Everyday snapshots of quiet
+                streets, local bakeries, and park benches become invaluable historical documents decades later.
+            </p>
+            <div class="grid grid-cols-1 gap-3 text-xs">
+                <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+                    <div class="text-lg mb-1">⏳ <strong>Time-Capsule Letters</strong></div>
+                    <p class="text-[#6E665F]">Write up to 500 characters for the public district board or privately for
+                        your future self, sealed until your chosen date.</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+                    <div class="text-lg mb-1">🏛️ <strong>AI Local Historian</strong></div>
+                    <p class="text-[#6E665F]">Multimodal AI recognizes landmarks in district photos and narrates
+                        verified historical facts—never fabricated stories.</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+                    <div class="text-lg mb-1">💌 <strong>Global Wishes</strong></div>
+                    <p class="text-[#6E665F]">Leave an anonymous warm wish for a stranger anywhere in the world or draw
+                        one whenever you need encouragement.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= EXPANDED CARD MODAL (FR-5) ================= -->
+        <div id="expanded-card-modal"
+            class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E5DDD3]">
+                <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#E5DDD3] bg-[#FAF7F2]">
+                    <div>
+                        <span id="modal-card-badge"
+                            class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#F7E6DF] text-[#C85A32]">Photo</span>
+                        <h3 id="modal-card-title" class="font-serif-display font-bold text-base text-[#231F20] mt-0.5">
+                            Title</h3>
+                    </div>
+                    <button onclick="closeExpandedCard()"
+                        class="w-8 h-8 rounded-full bg-stone-200/80 hover:bg-stone-300 flex items-center justify-center font-bold text-sm">✕</button>
+                </div>
+
+                <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+                    <div id="modal-card-media-container"
+                        class="rounded-2xl overflow-hidden bg-stone-100 border border-[#E5DDD3]"></div>
+
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6E665F] bg-[#FAF7F2] px-3.5 py-2.5 rounded-xl">
+                        <span>👤 <strong id="modal-card-author" class="text-[#231F20]">@author</strong></span>
+                        <span>📍 <strong id="modal-card-location" class="text-[#231F20]">District</strong></span>
+                        <span>📅 <span id="modal-card-date">2026-11-15</span></span>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-[#6E665F]">Community Comments</h4>
+                        <div id="modal-comments-list" class="space-y-2 max-h-36 overflow-y-auto"></div>
+
+                        <div class="flex gap-2 pt-1">
+                            <input id="new-comment-input" type="text" placeholder="Write a warm comment..."
+                                class="flex-1 px-3 py-2 rounded-xl border border-[#D8CEC2] text-xs focus:outline-none focus:border-[#C85A32]" />
+                            <button onclick="submitComment()"
+                                class="px-4 py-2 rounded-xl bg-[#231F20] text-white text-xs font-semibold hover:bg-[#C85A32] transition">Post</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= CREATE MEMORY MODAL (FR-3) ================= -->
+        <div id="create-modal"
+            class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-[#E5DDD3]">
+                <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#E5DDD3] bg-[#FAF7F2]">
+                    <h3 id="create-modal-title" class="font-serif-display font-bold text-lg">Add Memory</h3>
+                    <button onclick="closeCreateModal()"
+                        class="w-8 h-8 rounded-full bg-stone-200/80 hover:bg-stone-300 flex items-center justify-center font-bold text-sm">✕</button>
+                </div>
+
+                <form onsubmit="submitNewMemory(event)" class="p-5 space-y-3.5 text-xs">
+                    <div>
+                        <label class="block font-semibold mb-1">Memory Title *</label>
+                        <input id="create-title" required type="text" placeholder="e.g., Morning sun by the Clock Tower"
+                            class="w-full px-3 py-2 rounded-xl border border-[#D8CEC2]" />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2">
+                        <div>
+                            <label class="block font-semibold mb-1">Country *</label>
+                            <input id="create-country" required type="text" value="United Kingdom"
+                                class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] bg-stone-50" />
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1">City *</label>
+                            <input id="create-city" required type="text" value="Brighton & Hove"
+                                class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] bg-stone-50" />
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1">District *</label>
+                            <select id="create-district"
+                                class="w-full px-2 py-2 rounded-xl border border-[#D8CEC2] font-medium">
+                                <option value="preston">Preston Park</option>
+                                <option value="north-laine">North Laine</option>
+                                <option value="hove-seafront">Hove Seafront</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="create-media-section">
+                        <label class="block font-semibold mb-1" id="create-file-label">Photo File (Max 5 MB) *</label>
+                        <label
+                            class="flex flex-col items-center justify-center border-2 border-dashed border-[#D8CEC2] hover:border-[#C85A32] rounded-2xl p-4 cursor-pointer bg-[#FAF7F2] transition text-center">
+                            <span class="text-2xl mb-1" id="create-camera-icon">📸</span>
+                            <span class="font-semibold text-[#231F20]">Tap to Open Smartphone Camera or Gallery</span>
+                            <span class="text-[11px] text-[#6E665F] mt-0.5" id="create-limit-hint">HTML5
+                                capture="environment" • Auto-compressed to WebP ≤ 5MB</span>
+                            <input id="create-file-input" type="file" accept="image/*" capture="environment"
+                                class="hidden" onchange="handleFilePicked(this)" />
+                        </label>
+                        <p id="picked-file-name" class="text-[11px] text-emerald-700 font-semibold mt-1 hidden"></p>
+                    </div>
+
+                    <div id="create-letter-section" class="hidden space-y-3">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="font-semibold">Time-Capsule Letter Text *</label>
+                                <span id="letter-char-count" class="text-[#6E665F]">0 / 500</span>
+                            </div>
+                            <textarea id="create-letter-text" maxlength="500" rows="3"
+                                oninput="document.getElementById('letter-char-count').textContent = this.value.length + ' / 500'"
+                                placeholder="Write a message to be sealed until the future opening date..."
+                                class="w-full px-3 py-2 rounded-xl border border-[#D8CEC2]"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block font-semibold mb-1">Unlock Date *</label>
+                                <input id="create-unlock-date" type="date" value="2027-01-01"
+                                    class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2]" />
+                            </div>
+                            <div>
+                                <label class="block font-semibold mb-1">Visibility *</label>
+                                <select id="create-privacy"
+                                    class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2]">
+                                    <option value="public">Public (On District Canvas)</option>
+                                    <option value="private">Private ("For Myself" in Cabinet)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full py-2.5 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] text-white font-bold text-sm shadow transition">
+                        Save & Upload to Cloudflare R2
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= ADD WISH MODAL (FR-2) ================= -->
+        <div id="wish-modal"
+            class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-md w-full p-5 space-y-3 shadow-2xl border border-[#E5DDD3]">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-serif-display font-bold text-lg">Send a Wish to a Stranger</h3>
+                    <button onclick="document.getElementById('wish-modal').classList.add('hidden')"
+                        class="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center font-bold text-xs">✕</button>
+                </div>
+                <p class="text-xs text-[#6E665F]">Your wish enters the global pool and will brighten a random person's
+                    day.</p>
+                <textarea id="new-wish-input" maxlength="500" rows="3"
+                    placeholder="May you find an unexpected reason to smile today..."
+                    class="w-full p-3 rounded-xl border border-[#D8CEC2] text-xs"></textarea>
+                <button onclick="submitNewWish()"
+                    class="w-full py-2.5 rounded-xl bg-[#2A6F68] text-white font-bold text-xs">Send Wish ✨</button>
+            </div>
+        </div>
+
+        <!-- ================= AUTH MODAL (GUEST INTERCEPTOR) ================= -->
+        <div id="auth-modal"
+            class="hidden fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+            <div
+                class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-[#E5DDD3] text-center">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-[#F7E6DF] text-[#C85A32] mx-auto flex items-center justify-center text-2xl">
+                    🔑</div>
+                <div>
+                    <h3 class="font-serif-display font-bold text-xl text-[#231F20]">Join Be HERE</h3>
+                    <p id="auth-modal-reason" class="text-xs text-[#6E665F] mt-1">
+                        Guests can browse memories, draw wishes, and play cached audio stories. Sign in to add photos,
+                        videos, letters, wishes, or generate new AI histories.
+                    </p>
+                </div>
+                <div class="space-y-2 text-left text-xs">
+                    <input id="auth-nickname" type="text" value="Olena_K" placeholder="Choose your Nickname"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-[#D8CEC2]" />
+                    <input type="email" value="olena@behere.city" placeholder="Email"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-[#D8CEC2]" />
+                </div>
+                <button onclick="completeSignIn()"
+                    class="w-full py-2.5 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] text-white font-bold text-sm shadow transition">
+                    Sign In & Unlock Full Access
+                </button>
+                <button onclick="document.getElementById('auth-modal').classList.add('hidden')"
+                    class="text-xs text-[#6E665F] hover:underline">Continue as Guest</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ================= MOCK STATE & SEED DATA =================
+        let isAuthenticated = false;
+        let currentUser = { nickname: 'Olena_K' };
+        let currentDistrict = 'all';
+        let currentCreateType = 'photo';
+        let activeCardId = null;
+        let mobileFocusedCardId = null;
+        let isAudioPlaying = false;
+        let audioTimer = null;
+        let audioProgressVal = 0;
+        let wishIndex = 0;
+
+        const wishesPool = [
+            { text: "May your coffee be warm and your walk home full of golden autumn light.", author: "@tomas_br" },
+            { text: "Whatever you are building quietly right now, someone in the future will be grateful you didn't give up.", author: "@marta_waves" },
+            { text: "Take a deep breath and look up at the rooftops today—you are part of this city's living story.", author: "@sam_laine" }
+        ];
+
+        const districtMeta = {
+            'all': {
+                name: 'Brighton & Hove (Global Latest 25)',
+                lockedCount: 14,
+                cached: true,
+                transcript: 'Across Brighton and Hove, Victorian seafront terraces meet the medieval street pattern of the Lanes. Developed rapidly after the arrival of the London-to-Brighton railway in 1841, these neighborhoods preserve 19th-century wrought-iron balconies alongside historic public parks.'
+            },
+            'preston': {
+                name: 'Preston Park District',
+                lockedCount: 6,
+                cached: true,
+                transcript: 'Preston Park was acquired by Brighton Corporation in 1883 from the Stanford estate. It is home to the Preston Manor, dating back to the 13th century and rebuilt in 1738, as well as the historic Preston Twins—some of the oldest English elm trees in Europe.'
+            },
+            'north-laine': {
+                name: 'North Laine District',
+                lockedCount: 5,
+                cached: true,
+                transcript: 'The name North Laine derives from the Old English word "laine", meaning open tracts of arable land divided into furlongs. Unlike the older Lanes to the south, North Laine was laid out in the early 19th century as dense artisan housing and workshops.'
+            },
+            'hove-seafront': {
+                name: 'Hove Seafront District',
+                lockedCount: 3,
+                cached: true,
+                transcript: 'Hove’s seafront is defined by Brunswick Square and Adelaide Crescent, designed in the 1820s and 1830s by architect Charles Busby in the Regency style, flanked by the iconic striped wooden beach huts along Hove Lawns.'
+            }
+        };
+
+        const memories = [
+            { id: 1, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Morning Mist Over Preston Elm', author: '@olena_k', date: '2026-11-12', img: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=500&q=80', comments: [{ user: '@liam_uk', text: 'The light through the trees here at 8 AM is unmatched.' }] },
+            { id: 2, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Kensington Gardens Murals', author: '@marta_waves', date: '2026-11-11', img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 3, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'video', title: 'Evening Waves at Hove Lawns (0:42)', author: '@sam_laine', date: '2026-11-10', img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=500&q=80', comments: [{ user: '@claire_h', text: 'I can almost hear the pebbles rolling!' }] },
+            { id: 4, district: 'preston', districtLabel: 'Preston Park', type: 'letter', title: 'Unlocked: Autumn 2025 Bench Note', author: '@arthur_p', date: '2026-11-01', text: 'If you are reading this in late 2026: stop rushing for two minutes. The rose garden behind the pavilion still smells incredible after rain.', comments: [] },
+            { id: 5, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Sunday Vinyl Stalls', author: '@dj_kieran', date: '2026-11-09', img: 'https://images.unsplash.com/photo-1461784121038-f088ca1e7714?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 6, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'photo', title: 'Pastel Beach Huts Row', author: '@elena_v', date: '2026-11-08', img: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 7, district: 'preston', districtLabel: 'Preston Park', type: 'video', title: 'Velodrome Cyclists Warmup (0:55)', author: '@velo_ben', date: '2026-11-07', img: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 8, district: 'north-laine', districtLabel: 'North Laine', type: 'letter', title: 'Unlocked: Bakery Queue Friendship', author: '@nina_c', date: '2026-10-28', text: 'Met my closest friend while waiting for cardamom buns on Gardner Street. Saving this spot in history so we never forget.', comments: [] },
+            { id: 9, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Clock Tower Rain Reflection', author: '@olena_k', date: '2026-11-06', img: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 10, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'photo', title: 'Regency Balcony Ironwork', author: '@arch_tom', date: '2026-11-05', img: 'https://images.unsplash.com/photo-1513584684374-8bab748fbf90?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 11, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Espresso & Sketchbook', author: '@maya_art', date: '2026-11-04', img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 12, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Rotunda Cafe Morning', author: '@sara_j', date: '2026-11-03', img: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 13, district: 'north-laine', districtLabel: 'North Laine', type: 'video', title: 'Street Guitarist on Sydney St (0:38)', author: '@folk_dan', date: '2026-11-02', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 14, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'letter', title: 'Unlocked: First Winter Swim', author: '@coldwater_jo', date: '2026-11-01', text: 'Water was 11°C this morning off King Esplanade. Ten minutes in the sea resets everything.', comments: [] },
+            { id: 15, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Golden Leaves on Ditchling Rd', author: '@kate_m', date: '2026-10-30', img: 'https://images.unsplash.com/photo-1507783548227-544c3b8fc065?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 16, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Secondhand Bookshop Corner', author: '@reader_leo', date: '2026-10-29', img: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 17, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'photo', title: 'Sunset Behind West Pier', author: '@dusk_anna', date: '2026-10-27', img: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 18, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Chalk Wall & Ivy', author: '@botanic_r', date: '2026-10-26', img: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 19, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Lanterns Above Bond Street', author: '@night_owl', date: '2026-10-25', img: 'https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 20, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Tennis Courts at Dusk', author: '@ace_mark', date: '2026-10-24', img: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 21, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Fresh Flower Cart', author: '@flora_b', date: '2026-10-23', img: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 22, district: 'hove-seafront', districtLabel: 'Hove Seafront', type: 'photo', title: 'Brunswick Square Gardens', author: '@olena_k', date: '2026-10-22', img: 'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 23, district: 'north-laine', districtLabel: 'North Laine', type: 'photo', title: 'Cobbled Alley Rain', author: '@puddle_j', date: '2026-10-21', img: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 24, district: 'preston', districtLabel: 'Preston Park', type: 'photo', title: 'Rockery Waterfall Path', author: '@fern_g', date: '2026-10-20', img: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=500&q=80', comments: [] },
+            { id: 25, district: 'north-laine', districtLabel: 'North Laine', type: 'letter', title: 'Unlocked: Note to Future Neighbors', author: '@grace_t', date: '2026-10-19', text: 'Keep supporting the independent ceramic shops and tiny cafes on Trafalgar Street—they are the heartbeat of this neighborhood.', comments: [] }
+        ];
+
+        function renderCanvas() {
+            const canvas = document.getElementById('collage-canvas');
+            canvas.innerHTML = '';
+
+            const filtered = currentDistrict === 'all'
+                ? memories.slice(0, 25)
+                : memories.filter(m => m.district === currentDistrict).slice(0, 25);
+
+            filtered.forEach((item, idx) => {
+                const row = Math.floor(idx / 5);
+                const col = idx % 5;
+
+                const seed1 = ((item.id * 37) % 100) / 100 - 0.5;
+                const seed2 = ((item.id * 73) % 100) / 100 - 0.5;
+                const rotate = (((item.id * 19) % 9) - 4);
+
+                const baseLeft = col * 19.5 + 1.5;
+                const baseTop = row * 19.5 + 1.5;
+                const jitterX = seed1 * 3.0;
+                const jitterY = seed2 * 3.0;
+
+                const card = document.createElement('div');
+                card.className = 'memory-card' + (mobileFocusedCardId === item.id ? ' mobile-focused' : '');
+                card.style.left = `${Math.max(0.5, Math.min(79.5, baseLeft + jitterX))}%`;
+                card.style.top = `${Math.max(0.5, Math.min(81, baseTop + jitterY))}%`;
+                card.style.transform = `rotate(${rotate}deg)`;
+                card.style.zIndex = (idx % 10) + 1;
+
+                if (item.type === 'letter') {
+                    card.style.backgroundColor = '#FFFDF7';
+                    card.innerHTML = `
+            <div class="flex items-center justify-between text-[8px] font-bold text-[#C85A32] px-1">
+              <span>✉️</span>
+              <span class="truncate">${item.districtLabel.split(' ')[0]}</span>
+            </div>
+            <p class="text-[8px] font-serif-display text-[#231F20] leading-snug px-1 mt-0.5 line-clamp-3">
+              "${item.text}"
+            </p>
+          `;
+                } else {
+                    card.innerHTML = `
+            <div class="relative w-full h-full rounded-md overflow-hidden bg-stone-200">
+              <img src="${item.img}" alt="${item.title}" class="w-full h-full object-cover" />
+              ${item.type === 'video' ? '<span class="absolute top-1 right-1 bg-black/75 text-white text-[7px] px-1 py-0.5 rounded-full font-bold">▶ 1m</span>' : ''}
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-1">
+                <p class="text-[7px] text-white font-semibold truncate">${item.title}</p>
+              </div>
+            </div>
+          `;
+                }
+
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    const isMobile = document.getElementById('viewport-wrapper').classList.contains('mobile-mode');
+                    if (isMobile && mobileFocusedCardId !== item.id) {
+                        mobileFocusedCardId = item.id;
+                        renderCanvas();
+                        return;
+                    }
+                    mobileFocusedCardId = null;
+                    openExpandedCard(item);
+                };
+
+                canvas.appendChild(card);
+            });
+        }
+
+        function selectDistrict(districtKey) {
+            currentDistrict = districtKey;
+            document.getElementById('filter-district').value = districtKey;
+
+            const meta = districtMeta[districtKey];
+            document.getElementById('locked-counter').textContent = meta.lockedCount;
+            document.getElementById('canvas-heading').textContent =
+                districtKey === 'all' ? 'Latest 25 Memories Across All Locations' : `Memories in ${meta.name}`;
+
+            stopAudio();
+            document.getElementById('audio-title').textContent = `AI Historical Story: ${meta.name}`;
+            document.getElementById('audio-transcript-text').textContent = meta.transcript;
+            const badge = document.getElementById('audio-cache-badge');
+            if (meta.cached) {
+                badge.textContent = 'Cached • Verified History';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800';
+            } else {
+                badge.textContent = 'New Content • Regeneration Ready';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800';
+            }
+
+            ['preston', 'north-laine', 'hove-seafront'].forEach(key => {
+                const pin = document.getElementById(`pin-${key}`);
+                if (!pin) return;
+                if (key === districtKey) {
+                    pin.classList.add('bg-[#C85A32]', 'pin-pulse', 'scale-110');
+                    pin.classList.remove('bg-[#2A6F68]');
+                } else {
+                    pin.classList.remove('bg-[#C85A32]', 'pin-pulse', 'scale-110');
+                    pin.classList.add('bg-[#2A6F68]');
+                }
+            });
+
+            renderCanvas();
+        }
+
+        function resetToGlobal() {
+            goToPage('home');
+            selectDistrict('all');
+        }
+
+        function getRandomWish() {
+            const box = document.getElementById('wish-display-box');
+            const wish = wishesPool[wishIndex % wishesPool.length];
+            wishIndex++;
+            document.getElementById('wish-text').textContent = `"${wish.text}"`;
+            document.getElementById('wish-author').textContent = `Left by ${wish.author} • Stays here until you click "Wish for me" again`;
+            box.classList.remove('hidden');
+        }
+
+        function openWishModal() {
+            if (!isAuthenticated) {
+                openAuthModal('Sign in to send a warm wish into the global community pool.');
+                return;
+            }
+            document.getElementById('wish-modal').classList.remove('hidden');
+        }
+
+        function submitNewWish() {
+            const val = document.getElementById('new-wish-input').value.trim();
+            if (!val) return;
+            wishesPool.unshift({ text: val, author: `@${currentUser.nickname.toLowerCase()}` });
+            document.getElementById('new-wish-input').value = '';
+            document.getElementById('wish-modal').classList.add('hidden');
+            wishIndex = 0;
+            getRandomWish();
+        }
+
+        function openExpandedCard(item) {
+            activeCardId = item.id;
+            document.getElementById('modal-card-badge').textContent = item.type.toUpperCase();
+            document.getElementById('modal-card-title').textContent = item.title;
+            document.getElementById('modal-card-author').textContent = item.author;
+            document.getElementById('modal-card-location').textContent = `UK • Brighton & Hove • ${item.districtLabel}`;
+            document.getElementById('modal-card-date').textContent = item.date;
+
+            const mediaContainer = document.getElementById('modal-card-media-container');
+            if (item.type === 'letter') {
+                mediaContainer.innerHTML = `
+          <div class="p-6 bg-[#FFFDF7] font-serif-display text-base text-[#231F20] leading-relaxed">
+            "${item.text}"
+          </div>
+        `;
+            } else {
+                mediaContainer.innerHTML = `
+          <div class="relative">
+            <img src="${item.img}" class="w-full max-h-80 object-cover" />
+            ${item.type === 'video' ? '<div class="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/75 text-white text-xs font-semibold">▶ Playing 1-min Video (Cloudflare R2)</div>' : ''}
+          </div>
+        `;
+            }
+
+            renderModalComments(item);
+            document.getElementById('expanded-card-modal').classList.remove('hidden');
+        }
+
+        function renderModalComments(item) {
+            const list = document.getElementById('modal-comments-list');
+            if (!item.comments.length) {
+                list.innerHTML = `<p class="text-xs text-[#6E665F] italic">No comments yet. Be the first to leave a memory note!</p>`;
+                return;
+            }
+            list.innerHTML = item.comments.map(c => `
+        <div class="bg-[#FAF7F2] px-3 py-2 rounded-xl text-xs">
+          <strong class="text-[#231F20]">${c.user}:</strong> <span class="text-[#3B3531]">${c.text}</span>
+        </div>
+      `).join('');
+        }
+
+        function submitComment() {
+            if (!isAuthenticated) {
+                openAuthModal('Sign in to comment on photos, videos, and unlocked letters.');
+                return;
+            }
+            const input = document.getElementById('new-comment-input');
+            const text = input.value.trim();
+            if (!text || !activeCardId) return;
+            const item = memories.find(m => m.id === activeCardId);
+            item.comments.push({ user: `@${currentUser.nickname.toLowerCase()}`, text });
+            input.value = '';
+            renderModalComments(item);
+        }
+
+        function closeExpandedCard() {
+            document.getElementById('expanded-card-modal').classList.add('hidden');
+            activeCardId = null;
+        }
+
+        function toggleAudioStory() {
+            const meta = districtMeta[currentDistrict];
+            if (!meta.cached && !isAuthenticated) {
+                openAuthModal('New memories were added to this district! Sign in to trigger AI historical audio regeneration.');
+                return;
+            }
+
+            if (!meta.cached && isAuthenticated) {
+                meta.cached = true;
+                const badge = document.getElementById('audio-cache-badge');
+                badge.textContent = 'Regenerated & Cached';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800';
+            }
+
+            if (isAudioPlaying) {
+                stopAudio();
+            } else {
+                isAudioPlaying = true;
+                document.getElementById('audio-play-icon').textContent = '⏸';
+                document.getElementById('audio-transcript-text').textContent = meta.transcript;
+                audioTimer = setInterval(() => {
+                    audioProgressVal += 4;
+                    if (audioProgressVal >= 100) {
+                        stopAudio();
+                    } else {
+                        document.getElementById('audio-progress').style.width = `${audioProgressVal}%`;
+                    }
+                }, 300);
+            }
+        }
+
+        function stopAudio() {
+            isAudioPlaying = false;
+            clearInterval(audioTimer);
+            audioProgressVal = 0;
+            document.getElementById('audio-play-icon').textContent = '▶';
+            document.getElementById('audio-progress').style.width = '0%';
+        }
+
+        function toggleTranscript() {
+            document.getElementById('audio-transcript-text').textContent = districtMeta[currentDistrict].transcript;
+            document.getElementById('audio-transcript-box').classList.toggle('hidden');
+        }
+
+        function openCreateModal(type) {
+            if (!isAuthenticated) {
+                openAuthModal(`Sign in to add a ${type} to your neighborhood archive.`);
+                return;
+            }
+            currentCreateType = type;
+            const modal = document.getElementById('create-modal');
+            const mediaSec = document.getElementById('create-media-section');
+            const letterSec = document.getElementById('create-letter-section');
+            const fileInput = document.getElementById('create-file-input');
+
+            document.getElementById('picked-file-name').classList.add('hidden');
+
+            if (type === 'letter') {
+                document.getElementById('create-modal-title').textContent = 'Seal a Time-Capsule Letter';
+                mediaSec.classList.add('hidden');
+                letterSec.classList.remove('hidden');
+            } else {
+                letterSec.classList.add('hidden');
+                mediaSec.classList.remove('hidden');
+                if (type === 'photo') {
+                    document.getElementById('create-modal-title').textContent = 'Add Photo Memory';
+                    document.getElementById('create-file-label').textContent = 'Photo File (Max 5 MB) *';
+                    document.getElementById('create-camera-icon').textContent = '📸';
+                    document.getElementById('create-limit-hint').textContent = 'HTML5 capture="environment" • Auto-compressed to WebP ≤ 5MB';
+                    fileInput.setAttribute('accept', 'image/*');
+                } else {
+                    document.getElementById('create-modal-title').textContent = 'Add Video Memory';
+                    document.getElementById('create-file-label').textContent = 'Video File (Max 60 Seconds) *';
+                    document.getElementById('create-camera-icon').textContent = '🎥';
+                    document.getElementById('create-limit-hint').textContent = 'HTML5 capture="environment" • Client check duration ≤ 60s';
+                    fileInput.setAttribute('accept', 'video/*');
+                }
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function handleFilePicked(input) {
+            if (input.files && input.files[0]) {
+                const label = document.getElementById('picked-file-name');
+                label.textContent = `✓ Ready: ${input.files[0].name} (Validated within limits)`;
+                label.classList.remove('hidden');
+            }
+        }
+
+        function submitNewMemory(e) {
+            e.preventDefault();
+            const title = document.getElementById('create-title').value.trim();
+            const district = document.getElementById('create-district').value;
+            const districtNames = { 'preston': 'Preston Park', 'north-laine': 'North Laine', 'hove-seafront': 'Hove Seafront' };
+
+            if (currentCreateType === 'letter') {
+                const unlockDate = document.getElementById('create-unlock-date').value;
+                const privacy = document.getElementById('create-privacy').value;
+
+                districtMeta[district].lockedCount++;
+                districtMeta['all'].lockedCount++;
+                document.getElementById('locked-counter').textContent = districtMeta[currentDistrict].lockedCount;
+
+                const cabinetList = document.getElementById('cabinet-locked-list');
+                cabinetList.insertAdjacentHTML('afterbegin', `
+          <div class="bg-[#F4EFE6] border border-[#C85A32] rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-amber-900 bg-amber-200 px-2 py-0.5 rounded">
+                ${privacy === 'private' ? 'Private • For Myself' : 'Public Time Capsule'}
+              </span>
+              <h4 class="font-bold text-sm mt-1">${title}</h4>
+              <p class="text-xs text-[#6E665F]">📍 ${districtNames[district]} • Opens: ${unlockDate}</p>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-bold text-[#C85A32]">Sealed</div>
+              <div class="text-[10px] text-[#6E665F]">RLS Protected</div>
+            </div>
+          </div>
+        `);
+
+                closeCreateModal();
+                alert(`Time-Capsule Letter "${title}" sealed until ${unlockDate}! Notice the 🔒 counter increased.`);
+            } else {
+                memories.unshift({
+                    id: Date.now(),
+                    district,
+                    districtLabel: districtNames[district],
+                    type: currentCreateType,
+                    title,
+                    author: `@${currentUser.nickname.toLowerCase()}`,
+                    date: '2026-11-16',
+                    img: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=500&q=80',
+                    comments: []
+                });
+
+                districtMeta[district].cached = false;
+                districtMeta['all'].cached = false;
+
+                closeCreateModal();
+                selectDistrict(district);
+                renderCabinetMedia();
+            }
+        }
+
+        function closeCreateModal() {
+            document.getElementById('create-modal').classList.add('hidden');
+            document.getElementById('create-title').value = '';
+        }
+
+        function openAuthModal(reasonText) {
+            if (reasonText) {
+                document.getElementById('auth-modal-reason').textContent = reasonText;
+            }
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function completeSignIn() {
+            const nick = document.getElementById('auth-nickname').value.trim() || 'Olena_K';
+            isAuthenticated = true;
+            currentUser.nickname = nick;
+
+            document.getElementById('users-counter').textContent = '1,285';
+
+            const btn = document.getElementById('header-auth-btn');
+            btn.textContent = `👤 ${nick}`;
+            btn.className = 'px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2A6F68] text-white hover:bg-[#215953] transition shadow-sm whitespace-nowrap';
+
+            document.getElementById('cabinet-nickname-input').value = nick;
+            document.getElementById('journey-tip-text').innerHTML =
+                `Signed in as <b>${nick}</b>! You can now add Photos/Videos/Letters, post comments, regenerate AI audio, or open your <b>Personal Cabinet</b>.`;
+
+            document.getElementById('auth-modal').classList.add('hidden');
+            renderCabinetMedia();
+        }
+
+        function handleHeaderAuthClick() {
+            if (!isAuthenticated) {
+                openAuthModal();
+            } else {
+                goToPage('cabinet');
+            }
+        }
+
+        function saveNickname() {
+            const val = document.getElementById('cabinet-nickname-input').value.trim();
+            if (!val) return;
+            currentUser.nickname = val;
+            document.getElementById('header-auth-btn').textContent = `👤 ${val}`;
+            alert('Nickname updated in Supabase profiles table!');
+        }
+
+        function renderCabinetMedia() {
+            const container = document.getElementById('cabinet-my-media');
+            const mine = memories.filter(m => m.type !== 'letter').slice(0, 4);
+            container.innerHTML = mine.map(m => `
+        <div class="bg-white border border-[#E5DDD3] rounded-2xl overflow-hidden shadow-sm">
+          <img src="${m.img}" class="w-full h-24 object-cover" />
+          <div class="p-2.5">
+            <p class="text-xs font-bold truncate">${m.title}</p>
+            <p class="text-[10px] text-[#6E665F]">${m.districtLabel}</p>
+            <button onclick="this.closest('.bg-white').remove()" class="mt-2 w-full py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-semibold transition">
+              Delete Media
+            </button>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function goToPage(page) {
+            if (page === 'cabinet' && !isAuthenticated) {
+                openAuthModal('Sign in to access your Personal Cabinet and private unlocked letters.');
+                return;
+            }
+
+            ['home', 'cabinet', 'about'].forEach(p => {
+                document.getElementById(`page-${p}`).classList.toggle('hidden', p !== page);
+            });
+
+            if (page === 'cabinet') renderCabinetMedia();
+        }
+
+        function setViewport(mode) {
+            const wrapper = document.getElementById('viewport-wrapper');
+            const statusBar = document.getElementById('mobile-status-bar');
+            const btnDesk = document.getElementById('btn-desktop');
+            const btnMob = document.getElementById('btn-mobile');
+
+            mobileFocusedCardId = null;
+
+            if (mode === 'mobile') {
+                wrapper.classList.remove('desktop-mode');
+                wrapper.classList.add('mobile-mode');
+                statusBar.classList.remove('hidden');
+                btnMob.className = 'px-3 py-1 rounded-md bg-[#C85A32] text-white font-semibold transition flex items-center gap-1.5';
+                btnDesk.className = 'px-3 py-1 rounded-md text-stone-400 hover:text-white font-semibold transition flex items-center gap-1.5';
+            } else {
+                wrapper.classList.remove('mobile-mode');
+                wrapper.classList.add('desktop-mode');
+                statusBar.classList.add('hidden');
+                btnDesk.className = 'px-3 py-1 rounded-md bg-[#C85A32] text-white font-semibold transition flex items-center gap-1.5';
+                btnMob.className = 'px-3 py-1 rounded-md text-stone-400 hover:text-white font-semibold transition flex items-center gap-1.5';
+            }
+            renderCanvas();
+        }
+
+        // Initialize Board
+        renderCanvas();
+        document.getElementById('audio-transcript-text').textContent = districtMeta['all'].transcript;
+    </script>
+</body>
+
+</html>
