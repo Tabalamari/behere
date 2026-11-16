@@ -1,6 +1,6 @@
 import { Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { BoardStateService } from '../../services/board-state.service';
 import { AuthService } from '../../services/auth.service';
 import { AuthModalService } from '../../services/auth-modal.service';
@@ -186,6 +186,7 @@ export class TopHeaderComponent {
   readonly boardState = inject(BoardStateService);
   readonly auth = inject(AuthService);
   private authModal = inject(AuthModalService);
+  private router = inject(Router);
 
   readonly isAboutOpen = signal<boolean>(false);
   readonly showGuestTip = signal<boolean>(true);
@@ -201,6 +202,7 @@ export class TopHeaderComponent {
 
   onLogoClick(): void {
     this.boardState.clearLocation();
+    this.router.navigate(['/']);
   }
 
   openAboutModal(): void {

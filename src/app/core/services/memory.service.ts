@@ -2,7 +2,18 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { BoardStateService } from './board-state.service';
+import { R2UploadService } from './r2-upload.service';
 import { MemoryItem, LocationPin, CommentItem } from '../models/memory.model';
+
+export interface LockedLetterItem {
+  id: string;
+  title: string;
+  location_id?: string;
+  location_name?: string;
+  is_private: boolean;
+  unlock_date: string;
+  created_at: string;
+}
 
 const DEMO_LOCATIONS: Record<string, LocationPin> = {
   preston: {
@@ -417,10 +428,12 @@ export class MemoryService {
   private supabase = inject(SupabaseService);
   private auth = inject(AuthService);
   private boardState = inject(BoardStateService);
+  private r2Upload = inject(R2UploadService);
 
   readonly isLoading = signal<boolean>(false);
   readonly memories = signal<MemoryItem[]>(FULL_DEMO_25_MEMORIES);
   private demoComments: Record<string, CommentItem[]> = { ...INITIAL_DEMO_COMMENTS };
+  private userLocalMemories: MemoryItem[] = [];
 
   constructor() {
     this.loadCanvasMemories();
@@ -665,6 +678,8 @@ export class MemoryService {
         location: params.location
       };
 
+      this.userLocalMemories.unshift(newItem);
+
       if (!isLocked && !newItem.is_private) {
         this.memories.update((current) => [newItem, ...current]);
         this.boardState.canvasCards.update((current) => [newItem, ...current]);
@@ -691,6 +706,8 @@ export class MemoryService {
         location: params.location
       };
 
+      this.userLocalMemories.unshift(mockItem);
+
       if (!isLocked && !mockItem.is_private) {
         this.memories.update((current) => [mockItem, ...current]);
         this.boardState.canvasCards.update((current) => [mockItem, ...current]);
@@ -700,5 +717,251 @@ export class MemoryService {
 
       return { success: true, data: mockItem };
     }
+  }
+
+  // ==========================================
+  // USER CABINET DATA ACCESS (FR-7)
+  // ==========================================
+
+  private initDemoUserMemoriesIfNeeded(userId: string, nickname: string): void {
+    if (this.userLocalMemories.some((m) => m.user_id === userId)) {
+      return;
+    }
+
+    const now = Date.now();
+    this.userLocalMemories.push(
+      // 1. Unlocked private letter for myself
+      {
+        id: 'priv-unlocked-' + userId,
+        user_id: userId,
+        location_id: 'loc-1',
+        type: 'letter',
+        title: 'Note to Future Self: Autumn Reflections',
+        media_url: null,
+        letter_text: 'Dear future me, remember why you started this journey. Walk through Preston Park, breathe the crisp sea air, and do not forget the quiet moments between busy days.',
+        is_private: true,
+        unlock_date: new Date(now - 7 * 86400000).toISOString(),
+        created_at: new Date(now - 30 * 86400000).toISOString(),
+        author_nickname: nickname,
+        location: DEMO_LOCATIONS['preston']
+      },
+      // 2. Sealed time capsule letter (unlocks in 2 days)
+      {
+        id: 'priv-sealed-' + userId,
+        user_id: userId,
+        location_id: 'loc-2',
+        type: 'letter',
+        title: 'Time Capsule: North Laine Memories for 2027',
+        media_url: null,
+        letter_text: 'Sealed archival content hidden until the countdown expires.',
+        is_private: true,
+        unlock_date: new Date(now + 2 * 86400000 + 4 * 3600000 + 35 * 60000).toISOString(),
+        created_at: new Date(now - 86400000).toISOString(),
+        author_nickname: nickname,
+        location: DEMO_LOCATIONS['northLaine']
+      },
+      // 3. Uploaded photo memory
+      {
+        id: 'user-photo-' + userId,
+        user_id: userId,
+        location_id: 'loc-3',
+        type: 'photo',
+        title: 'Hove Seafront Sunset Walk',
+        media_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+        letter_text: null,
+        is_private: false,
+        unlock_date: new Date(now - 2 * 86400000).toISOString(),
+        created_at: new Date(now - 2 * 86400000).toISOString(),
+        author_nickname: nickname,
+        location: DEMO_LOCATIONS['hoveSeafront']
+      }
+    );
+  }
+
+  /**
+   * Fetches the user's unlocked private letters ("For Myself", is_private = true AND unlock_date <= now())
+   */
+  async fetchUserUnlockedPrivateLetters(): Promise<MemoryItem[]> {
+    const user = this.auth.currentUser();
+    if (!user) return [];
+
+    this.initDemoUserMemoriesIfNeeded(user.id, user.nickname);
+
+    try {
+      const { data, error } = await this.supabase.client
+        .from('memories')
+        .select('*, locations(*)')
+        .eq('user_id', user.id)
+        .eq('type', 'letter')
+        .eq('is_private', true)
+        .lte('unlock_date', new Date().toISOString())
+        .order('unlock_date', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          user_id: d.user_id,
+          location_id: d.location_id,
+          type: d.type,
+          title: d.title,
+          media_url: d.media_url,
+          letter_text: d.letter_text,
+          is_private: d.is_private,
+          unlock_date: d.unlock_date,
+          created_at: d.created_at,
+          author_nickname: user.nickname,
+          location: d.locations
+            ? {
+                id: d.locations.id,
+                osm_id: d.locations.osm_id,
+                country: d.locations.country,
+                city: d.locations.city,
+                district: d.locations.district,
+                lat: d.locations.lat,
+                lng: d.locations.lng
+              }
+            : undefined
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const now = Date.now();
+    return this.userLocalMemories.filter(
+      (m) =>
+        m.user_id === user.id &&
+        m.type === 'letter' &&
+        m.is_private &&
+        new Date(m.unlock_date).getTime() <= now
+    );
+  }
+
+  /**
+   * Calls get_my_locked_letters() to get metadata for letters with unlock_date > now()
+   * Notice letter_text is hidden!
+   */
+  async fetchUserLockedLetters(): Promise<LockedLetterItem[]> {
+    const user = this.auth.currentUser();
+    if (!user) return [];
+
+    this.initDemoUserMemoriesIfNeeded(user.id, user.nickname);
+
+    try {
+      const { data, error } = await this.supabase.client.rpc('get_my_locked_letters');
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          location_id: d.location_id,
+          location_name: 'District Board',
+          is_private: d.is_private,
+          unlock_date: d.unlock_date,
+          created_at: d.created_at
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const now = Date.now();
+    return this.userLocalMemories
+      .filter((m) => m.user_id === user.id && m.type === 'letter' && new Date(m.unlock_date).getTime() > now)
+      .map((m) => ({
+        id: m.id,
+        title: m.title,
+        location_id: m.location_id,
+        location_name: m.location?.district || 'District Board',
+        is_private: m.is_private,
+        unlock_date: m.unlock_date,
+        created_at: m.created_at
+      }));
+  }
+
+  /**
+   * Fetches uploaded photos & videos owned by the current user
+   */
+  async fetchUserMediaMemories(): Promise<MemoryItem[]> {
+    const user = this.auth.currentUser();
+    if (!user) return [];
+
+    this.initDemoUserMemoriesIfNeeded(user.id, user.nickname);
+
+    try {
+      const { data, error } = await this.supabase.client
+        .from('memories')
+        .select('*, locations(*)')
+        .eq('user_id', user.id)
+        .in('type', ['photo', 'video'])
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          user_id: d.user_id,
+          location_id: d.location_id,
+          type: d.type,
+          title: d.title,
+          media_url: d.media_url,
+          letter_text: null,
+          is_private: d.is_private,
+          unlock_date: d.unlock_date,
+          created_at: d.created_at,
+          author_nickname: user.nickname,
+          location: d.locations
+            ? {
+                id: d.locations.id,
+                osm_id: d.locations.osm_id,
+                country: d.locations.country,
+                city: d.locations.city,
+                district: d.locations.district,
+                lat: d.locations.lat,
+                lng: d.locations.lng
+              }
+            : undefined
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    return this.userLocalMemories.filter(
+      (m) => m.user_id === user.id && (m.type === 'photo' || m.type === 'video')
+    );
+  }
+
+  /**
+   * Deletes a user memory and purges file from Cloudflare R2 if mediaUrl is provided
+   */
+  async deleteUserMemory(memoryId: string, mediaUrl?: string | null): Promise<{ success: boolean; error?: string }> {
+    const user = this.auth.currentUser();
+    if (!user) return { success: false, error: 'User is not authenticated' };
+
+    try {
+      if (mediaUrl) {
+        const match = mediaUrl.match(/uploads\/[^?]+/);
+        const key = match ? match[0] : null;
+        if (key) {
+          await this.r2Upload.deleteMedia(key);
+        }
+      }
+
+      await this.supabase.client
+        .from('memories')
+        .delete()
+        .eq('id', memoryId)
+        .eq('user_id', user.id);
+    } catch {
+      // Fallback
+    }
+
+    this.userLocalMemories = this.userLocalMemories.filter((m) => m.id !== memoryId);
+    this.memories.update((items) => items.filter((m) => m.id !== memoryId));
+    this.boardState.canvasCards.update((items) => items.filter((m) => m.id !== memoryId));
+
+    await this.boardState.refreshPlatformCounters();
+    await this.boardState.refreshLockedLettersCount();
+
+    return { success: true };
   }
 }
