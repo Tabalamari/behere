@@ -53,7 +53,7 @@ import { AuthModalService } from '../../services/auth-modal.service';
               class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100/90 border border-rose-200 text-rose-900 text-xs font-semibold shadow-xs">
               <span class="text-xs">✋</span>
               <span class="tabular-nums font-mono">{{ boardState.totalUsersCount() }}</span>
-              <span class="hidden md:inline text-[10px] text-rose-800 font-normal">voices</span>
+              <span class="hidden md:inline text-[10px] text-rose-800 font-normal">members</span>
             </div>
           </div>
 
