@@ -5,6 +5,7 @@ import {
   NgZone,
   OnDestroy,
   OnInit,
+  AfterViewInit,
   PLATFORM_ID,
   ViewChild,
   effect,
@@ -52,9 +53,9 @@ import { environment } from '../../../../environments/environment';
       </div>
 
       <!-- Map Container -->
-      <div class="relative w-full h-[320px] sm:h-[400px] bg-neutral-100">
+      <div class="relative w-full h-[360px] sm:h-[420px] bg-neutral-100">
         <!-- WebGL Map container -->
-        <div #mapContainer class="w-full h-full"></div>
+        <div #mapContainer class="w-full h-full min-h-[360px]"></div>
 
         <!-- Fallback Interactive Preview if Mapbox token is missing/invalid -->
         @if (!hasValidMapboxToken) {
@@ -96,16 +97,22 @@ import { environment } from '../../../../environments/environment';
       display: block;
       width: 100%;
     }
+    .mapboxgl-map {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 360px !important;
+    }
   `]
 })
-export class MapboxViewComponent implements OnInit, OnDestroy {
-  @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef<HTMLDivElement>;
+export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef<HTMLDivElement>;
 
   readonly boardState = inject(BoardStateService);
   private supabase = inject(SupabaseService);
   private ngZone = inject(NgZone);
 
   private map: mapboxgl.Map | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private markersMap = new Map<string, mapboxgl.Marker>();
   readonly activePins = signal<LocationPin[]>([]);
 
@@ -129,12 +136,21 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.checkMapboxToken();
       this.loadDistrictPins();
     }
   }
 
+  ngAfterViewInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.checkMapboxToken();
+    }
+  }
+
   ngOnDestroy(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.map) {
       this.map.remove();
       this.map = null;
@@ -159,20 +175,33 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
   private initMapboxMap(): void {
     this.ngZone.runOutsideAngular(() => {
       try {
-        const defaultCenter: [number, number] = [30.5234, 50.4501]; // Kyiv center default
+        const defaultCenter: [number, number] = [-0.142, 50.835]; // Brighton center default
 
         this.map = new mapboxgl.Map({
           container: this.mapContainer.nativeElement,
-          style: 'mapbox://styles/mapbox/light-v11',
+          style: 'mapbox://styles/mapbox/streets-v12',
           center: defaultCenter,
-          zoom: 11
+          zoom: 12
         });
 
         this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         this.map.on('load', () => {
+          this.map?.resize();
           this.renderMapboxMarkers();
         });
+
+        // Ensure canvas recalculates size after layout settling
+        setTimeout(() => {
+          this.map?.resize();
+        }, 300);
+
+        if (typeof ResizeObserver !== 'undefined' && this.mapContainer?.nativeElement) {
+          this.resizeObserver = new ResizeObserver(() => {
+            this.map?.resize();
+          });
+          this.resizeObserver.observe(this.mapContainer.nativeElement);
+        }
       } catch (err) {
         console.warn('Mapbox initialization fallback:', err);
         this.ngZone.run(() => {
@@ -235,7 +264,7 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
     if (!this.map) return;
 
     // Clear existing
-    this.markersMap.forEach(m => m.remove());
+    this.markersMap.forEach((m) => m.remove());
     this.markersMap.clear();
 
     const pins = this.activePins();
@@ -280,6 +309,13 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
 
         this.markersMap.set(pin.id, marker);
       }
+
+      // If multiple pins exist, fit bounds to display all
+      if (pins.length > 0 && this.map) {
+        const bounds = new mapboxgl.LngLatBounds();
+        pins.forEach((p) => bounds.extend([p.lng, p.lat]));
+        this.map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+      }
     });
   }
 
@@ -289,5 +325,10 @@ export class MapboxViewComponent implements OnInit, OnDestroy {
 
   resetSelection(): void {
     this.boardState.clearLocation();
+    if (this.map && this.activePins().length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      this.activePins().forEach((p) => bounds.extend([p.lng, p.lat]));
+      this.map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+    }
   }
 }
