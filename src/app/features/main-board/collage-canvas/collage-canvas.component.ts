@@ -40,7 +40,7 @@ interface CardLayout {
 
       <!-- STRATIFIED 5x5 COLLAGE BOARD -->
       <div 
-        class="relative w-full h-[540px] sm:h-[620px] rounded-3xl border border-[#E5DDD3] overflow-hidden select-none shadow-inner"
+        class="relative w-full h-[560px] sm:h-[660px] rounded-3xl border border-[#E5DDD3] overflow-hidden select-none shadow-inner"
         style="background: radial-gradient(circle at 20% 25%, rgba(200, 90, 50, 0.05), transparent 45%), radial-gradient(circle at 80% 75%, rgba(42, 111, 104, 0.06), transparent 50%), #F3EDE4;">
         
         <!-- Subtle Canvas Grid Marks -->
@@ -56,7 +56,7 @@ interface CardLayout {
           </div>
         }
 
-        <!-- 25 Stratified Jittered Cards -->
+        <!-- 25 Stratified Jittered Cards (Enlarged ~7% for enhanced visual impact) -->
         @for (card of cardLayouts(); track card.item.id; let idx = $index) {
           <div 
             (click)="onCardClick(card.item)"
@@ -68,19 +68,19 @@ interface CardLayout {
             [class.rotate-0]="focusedCardId() === card.item.id"
             [class.shadow-2xl]="focusedCardId() === card.item.id"
             [class.border-[#C85A32]]="focusedCardId() === card.item.id"
-            class="absolute w-[18.2%] h-[18%] sm:w-[17.5%] sm:h-[17.5%] p-1 sm:p-1.5 rounded-xl border border-black/8 bg-white shadow-sm cursor-pointer transition-all duration-300 ease-out hover:scale-130 hover:rotate-0 hover:z-40 hover:shadow-2xl hover:border-[#C85A32] flex flex-col group">
+            class="absolute w-[19.5%] h-[19.2%] sm:w-[18.8%] sm:h-[18.8%] p-1 sm:p-1.5 rounded-xl border border-black/8 bg-white shadow-sm cursor-pointer transition-all duration-300 ease-out hover:scale-130 hover:rotate-0 hover:z-40 hover:shadow-2xl hover:border-[#C85A32] flex flex-col group">
             
             @if (card.item.type === 'letter') {
               <!-- Letter Paper Card -->
-              <div class="w-full h-full rounded-lg bg-[#FFFDF7] border border-[#EBE3D7] p-1.5 sm:p-2 flex flex-col justify-between overflow-hidden">
-                <div class="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-[#C85A32]">
+              <div class="w-full h-full rounded-lg bg-[#FFFDF7] border border-[#EBE3D7] p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden">
+                <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-[#C85A32]">
                   <span>✉️ Letter</span>
-                  <span class="truncate max-w-[50px]">{{ card.item.location?.district || 'Sealed' }}</span>
+                  <span class="truncate max-w-[60px]">{{ card.item.location?.district || 'Sealed' }}</span>
                 </div>
-                <p class="font-serif-display text-[8px] sm:text-[9px] text-[#231F20] leading-snug line-clamp-3 sm:line-clamp-4 italic my-auto">
+                <p class="font-serif-display text-[9px] sm:text-[10px] text-[#231F20] leading-snug line-clamp-3 sm:line-clamp-4 italic my-auto">
                   "{{ card.item.letter_text || card.item.title }}"
                 </p>
-                <div class="text-[7px] sm:text-[8px] text-[#6E665F] truncate">
+                <div class="text-[8px] sm:text-[9px] text-[#6E665F] truncate">
                   &#64;{{ card.item.author_nickname || 'Neighbor' }}
                 </div>
               </div>
@@ -94,16 +94,16 @@ interface CardLayout {
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 
                 @if (card.item.type === 'video') {
-                  <span class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[7px] sm:text-[8px] px-1 py-0.5 rounded-md font-bold flex items-center gap-0.5">
+                  <span class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[8px] sm:text-[9px] px-1 py-0.5 rounded-md font-bold flex items-center gap-0.5">
                     <span>▶</span> 1m
                   </span>
                 }
 
                 <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 sm:p-1.5">
-                  <p class="text-[8px] sm:text-[9px] text-white font-semibold truncate leading-tight">
+                  <p class="text-[9px] sm:text-[10px] text-white font-semibold truncate leading-tight">
                     {{ card.item.title }}
                   </p>
-                  <p class="text-[7px] sm:text-[8px] text-stone-300 truncate">
+                  <p class="text-[8px] sm:text-[9px] text-stone-300 truncate">
                     &#64;{{ card.item.author_nickname }}
                   </p>
                 </div>
@@ -268,16 +268,16 @@ export class CollageCanvasComponent {
       const seed2 = ((hash * 73) % 100) / 100 - 0.5;
       const rotate = (((hash * 19) % 9) - 4); // -4 deg to +4 deg
 
-      // Base percentage position for 5x5 grid
-      const baseLeft = col * 19.5 + 1.2;
-      const baseTop = row * 19.5 + 1.2;
+      // Base percentage position for 5x5 grid with enlarged cards
+      const baseLeft = col * 19.3 + 1.2;
+      const baseTop = row * 19.3 + 1.2;
 
       // Deterministic Jitter capped to guarantee overlap <= 25% of card area
-      const jitterX = seed1 * 2.6;
-      const jitterY = seed2 * 2.6;
+      const jitterX = seed1 * 2.5;
+      const jitterY = seed2 * 2.5;
 
-      const left = Math.max(0.5, Math.min(80.5, baseLeft + jitterX));
-      const top = Math.max(0.5, Math.min(80.5, baseTop + jitterY));
+      const left = Math.max(0.5, Math.min(79.5, baseLeft + jitterX));
+      const top = Math.max(0.5, Math.min(79.5, baseTop + jitterY));
       const zIndex = (idx % 12) + 1;
 
       return {
