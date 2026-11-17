@@ -18,7 +18,7 @@ const DEMO_STORIES: Record<string, AudioStoryData> = {
   'loc-1': {
     location_id: 'loc-1',
     content_hash: 'demo-preston-hash',
-    audio_url: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
+    audio_url: '/audio/preston-park.mp3',
     transcript:
       'Welcome to Preston Park, Brighton\'s oldest and largest municipal park, laid out in the 1880s on the former grounds of historic Preston Manor. The park is renowned worldwide for the Preston Twins—magnificent English elms believed to be over four hundred years old, having survived Dutch elm disease. Generations of residents have walked beneath these ancient canopies, finding solace amidst coastal sea breezes.',
     cached: true
@@ -26,7 +26,7 @@ const DEMO_STORIES: Record<string, AudioStoryData> = {
   'loc-2': {
     location_id: 'loc-2',
     content_hash: 'demo-north-laine-hash',
-    audio_url: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
+    audio_url: '/audio/north-laine.mp3',
     transcript:
       'Welcome to North Laine, a historic maze of Victorian commercial and residential streets. Originally five open agricultural strips known as "laines" in medieval times, the area transformed in the nineteenth century with artisans and railway workers. Today, its historic shopfronts, bookshops, and murals stand as a monument to community-driven urban preservation.',
     cached: true
@@ -34,7 +34,7 @@ const DEMO_STORIES: Record<string, AudioStoryData> = {
   'loc-3': {
     location_id: 'loc-3',
     content_hash: 'demo-hove-hash',
-    audio_url: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
+    audio_url: '/audio/brighton-global.mp3',
     transcript:
       'Welcome to the historic Hove Seafront. Developed in the Regency and early Victorian eras with expansive lawns and pastel-hued beach huts, this promenade preserves the distinguished architectural legacy of Decimus Burton and the Brunswick estate. The pebbled shores continue to gather generations of bathers and dreamers gazing across the English Channel.',
     cached: true
@@ -192,8 +192,9 @@ export class AiAudioService {
     this.currentStory.set({
       location_id: locId,
       content_hash: newHash,
-      audio_url: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
-      transcript: `Discover the living historical archive of ${location?.district || 'Brighton'}. Explore photos, videos, and unlocked letters placed here by neighbors across decades.`,
+      audio_url: '/audio/brighton-global.mp3',
+      transcript:
+        'Welcome to the living historical archive of Brighton. For generations, this coastal town has gathered artists, travelers, and neighbors beneath sea breezes and Victorian promenades. From the historic elm avenues of Preston Park to the vibrant artisan lanes of North Laine, each memory preserved here safeguards the authentic spirit of this community.',
       cached: true
     });
     this.isCacheValid.set(true);

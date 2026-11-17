@@ -194,7 +194,7 @@ CRITICAL INTEGRITY RULES:
 
     // 7. Synthesize audio via ElevenLabs
     const elevenApiKey = Deno.env.get("ELEVENLABS_API_KEY");
-    const elevenVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || "21m00Tcm4TlvDq8ikWAM"; // Rachel / Warm archival narrator
+    const elevenVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || "pNInz6obpgDQGcFmaJgB"; // Adam / Warm archival narrator
     let audioBuffer: Uint8Array | null = null;
 
     if (elevenApiKey) {
@@ -255,8 +255,8 @@ CRITICAL INTEGRITY RULES:
         console.error("Cloudflare R2 MP3 upload failed:", s3Error);
       }
     } else {
-      // In offline/mock mode or missing credentials, use a reliable public demo audio file
-      audioUrl = "https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3";
+      // In offline/mock mode or missing credentials, use the bundled narrator audio
+      audioUrl = "/audio/brighton-global.mp3";
     }
 
     // 9. UPSERT into audio_stories table
