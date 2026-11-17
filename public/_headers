@@ -1,0 +1,21 @@
+# Long-term caching for hashed static assets
+/chunk-*.js
+  Cache-Control: public, max-age=31536000, immutable
+/main-*.js
+  Cache-Control: public, max-age=31536000, immutable
+/styles-*.css
+  Cache-Control: public, max-age=31536000, immutable
+/polyfills-*.js
+  Cache-Control: public, max-age=31536000, immutable
+/audio/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML should not be cached long-term to ensure immediate version updates
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Global security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
