@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { User } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
+import { AuthModalService } from './auth-modal.service';
 import { UserProfile } from '../models/memory.model';
 
 export interface SignUpResult {
@@ -15,11 +16,13 @@ export interface SignUpResult {
 })
 export class AuthService {
   private supabase = inject(SupabaseService);
+  private modalService = inject(AuthModalService);
 
   readonly authUser = signal<User | null>(null);
   readonly currentUser = signal<UserProfile | null>(null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly isLoading = signal<boolean>(true);
+  readonly isRecoveryMode = signal<boolean>(false);
 
   // Email verification state
   readonly justSignedUpEmail = signal<string | null>(null);
@@ -54,7 +57,12 @@ export class AuthService {
       this.isLoading.set(false);
     }
 
-    this.supabase.auth.onAuthStateChange(async (_event, session) => {
+    this.supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        this.isRecoveryMode.set(true);
+        this.modalService.open('update-password', undefined, 'Please enter your new password to complete recovery.');
+      }
+
       if (session?.user) {
         this.authUser.set(session.user);
         await this.loadUserProfile(session.user.id, session.user);
@@ -105,13 +113,15 @@ export class AuthService {
   }
 
   async signUp(email: string, password: string, nickname: string): Promise<SignUpResult> {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanNickname = nickname.trim();
     try {
       const { data, error } = await this.supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           data: {
-            nickname
+            nickname: cleanNickname
           }
         }
       });
@@ -120,7 +130,7 @@ export class AuthService {
         return { user: null, needsConfirmation: false, error: error.message };
       }
 
-      this.justSignedUpEmail.set(email);
+      this.justSignedUpEmail.set(cleanEmail);
 
       if (data.user) {
         this.authUser.set(data.user);
@@ -133,18 +143,18 @@ export class AuthService {
         if (!profile) {
           const fallbackProfile: UserProfile = {
             id: data.user.id,
-            nickname,
+            nickname: cleanNickname,
             email: data.user.email,
             email_confirmed_at: data.user.email_confirmed_at,
             created_at: new Date().toISOString()
           };
           this.currentUser.set(fallbackProfile);
-          return { user: fallbackProfile, needsConfirmation, email, error: null };
+          return { user: fallbackProfile, needsConfirmation, email: cleanEmail, error: null };
         }
-        return { user: profile, needsConfirmation, email, error: null };
+        return { user: profile, needsConfirmation, email: cleanEmail, error: null };
       }
 
-      return { user: null, needsConfirmation: true, email, error: null };
+      return { user: null, needsConfirmation: true, email: cleanEmail, error: null };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       return { user: null, needsConfirmation: false, error: message };
@@ -152,9 +162,10 @@ export class AuthService {
   }
 
   async signIn(email: string, password: string): Promise<{ user: UserProfile | null; error: string | null }> {
+    const cleanEmail = email.trim().toLowerCase();
     try {
       const { data, error } = await this.supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password
       });
 
@@ -165,7 +176,17 @@ export class AuthService {
       if (data.user) {
         this.authUser.set(data.user);
         this.justSignedUpEmail.set(null);
-        const profile = await this.loadUserProfile(data.user.id, data.user);
+        let profile = await this.loadUserProfile(data.user.id, data.user);
+        if (!profile) {
+          profile = {
+            id: data.user.id,
+            nickname: (data.user.user_metadata?.['nickname'] as string) || data.user.email?.split('@')[0] || 'Neighbor',
+            email: data.user.email,
+            email_confirmed_at: data.user.email_confirmed_at,
+            created_at: data.user.created_at || new Date().toISOString()
+          };
+          this.currentUser.set(profile);
+        }
         return { user: profile, error: null };
       }
 
@@ -173,6 +194,52 @@ export class AuthService {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign in failed';
       return { user: null, error: message };
+    }
+  }
+
+  async resetPasswordForEmail(email: string): Promise<{ success: boolean; error: string | null }> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      return { success: false, error: 'Email address is required.' };
+    }
+
+    try {
+      // Use window.location.origin so reset callback works on any host (pages.dev or localhost)
+      const redirectTo = `${window.location.origin}/#recovery`;
+      const { error } = await this.supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to request password reset';
+      return { success: false, error: message };
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const { data, error } = await this.supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        this.authUser.set(data.user);
+        await this.loadUserProfile(data.user.id, data.user);
+      }
+      this.isRecoveryMode.set(false);
+      return { success: true, error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update password';
+      return { success: false, error: message };
     }
   }
 
@@ -193,7 +260,8 @@ export class AuthService {
   }
 
   async resendConfirmationEmail(email?: string): Promise<{ success: boolean; error: string | null }> {
-    const targetEmail = email || this.userEmail();
+    const rawEmail = email || this.userEmail();
+    const targetEmail = rawEmail ? rawEmail.trim().toLowerCase() : '';
     if (!targetEmail) {
       return { success: false, error: 'Email address is required to resend confirmation' };
     }

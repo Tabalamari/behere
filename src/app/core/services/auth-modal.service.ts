@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export type AuthModalMode = 'signin' | 'signup';
+export type AuthModalMode = 'signin' | 'signup' | 'forgot-password' | 'update-password';
 
 @Injectable({
   providedIn: 'root'
