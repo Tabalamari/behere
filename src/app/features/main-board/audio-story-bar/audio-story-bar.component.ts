@@ -63,7 +63,7 @@ import { AuthService } from '../../../core/services/auth.service';
           type="button"
           (click)="onPlayClick()"
           [disabled]="audio.isGenerating()"
-          [title]="audio.isCacheValid() ? 'Play audio narration' : (auth.isAuthenticated() ? 'Generate updated AI historical story' : 'Sign in to update AI story')"
+          [title]="audio.isPlaying() ? 'Pause spoken narration' : 'Play spoken narration'"
           class="w-11 h-11 rounded-2xl bg-[#C85A32] hover:bg-[#B34E2A] text-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer">
           @if (audio.isGenerating()) {
             <span class="animate-spin text-base">⏳</span>
@@ -97,7 +97,7 @@ import { AuthService } from '../../../core/services/auth.service';
               </span>
             } @else {
               <span class="truncate font-medium text-[#231F20]">
-                Spoken Narration (ElevenLabs Multilingual)
+                {{ audio.currentStory()?.audio_url ? 'Archival Spoken Narration' : 'Local Historian Speech (TTS)' }}
               </span>
             }
 

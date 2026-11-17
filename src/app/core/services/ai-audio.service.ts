@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, effect, computed } from '@angular/core';
+import { Injectable, inject, signal, effect } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { AuthModalService } from './auth-modal.service';
@@ -15,7 +15,7 @@ export interface AudioStoryData {
 }
 
 const DEMO_STORIES: Record<string, AudioStoryData> = {
-  'loc-1': {
+  'preston-park': {
     location_id: 'loc-1',
     content_hash: 'demo-preston-hash',
     audio_url: '/audio/preston-park.mp3',
@@ -23,7 +23,7 @@ const DEMO_STORIES: Record<string, AudioStoryData> = {
       'Welcome to Preston Park, Brighton\'s oldest and largest municipal park, laid out in the 1880s on the former grounds of historic Preston Manor. The park is renowned worldwide for the Preston Twins—magnificent English elms believed to be over four hundred years old, having survived Dutch elm disease. Generations of residents have walked beneath these ancient canopies, finding solace amidst coastal sea breezes.',
     cached: true
   },
-  'loc-2': {
+  'north-laine': {
     location_id: 'loc-2',
     content_hash: 'demo-north-laine-hash',
     audio_url: '/audio/north-laine.mp3',
@@ -31,12 +31,20 @@ const DEMO_STORIES: Record<string, AudioStoryData> = {
       'Welcome to North Laine, a historic maze of Victorian commercial and residential streets. Originally five open agricultural strips known as "laines" in medieval times, the area transformed in the nineteenth century with artisans and railway workers. Today, its historic shopfronts, bookshops, and murals stand as a monument to community-driven urban preservation.',
     cached: true
   },
-  'loc-3': {
+  'hove-seafront': {
     location_id: 'loc-3',
     content_hash: 'demo-hove-hash',
     audio_url: '/audio/brighton-global.mp3',
     transcript:
       'Welcome to the historic Hove Seafront. Developed in the Regency and early Victorian eras with expansive lawns and pastel-hued beach huts, this promenade preserves the distinguished architectural legacy of Decimus Burton and the Brunswick estate. The pebbled shores continue to gather generations of bathers and dreamers gazing across the English Channel.',
+    cached: true
+  },
+  'brighton-global': {
+    location_id: null,
+    content_hash: 'demo-global-hash',
+    audio_url: '/audio/brighton-global.mp3',
+    transcript:
+      'Welcome to the living historical archive of Brighton. For generations, this coastal town has gathered artists, travelers, and neighbors beneath sea breezes and Victorian promenades. From the historic elm avenues of Preston Park to the vibrant artisan lanes of North Laine, each memory preserved here safeguards the authentic spirit of this community.',
     cached: true
   }
 };
@@ -56,17 +64,23 @@ export class AiAudioService {
   readonly isGenerating = signal<boolean>(false);
   readonly isPlaying = signal<boolean>(false);
   readonly currentTime = signal<number>(0);
-  readonly duration = signal<number>(0);
+  readonly duration = signal<number>(28);
   readonly errorMessage = signal<string | null>(null);
 
   // Audio HTML5 Element
   private audioElement: HTMLAudioElement | null = null;
   private currentHash: string = '';
 
+  // Web Speech Synthesis (TTS) State
+  private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private ttsTimer: any = null;
+  private ttsStartTime: number = 0;
+  private isUsingTTS: boolean = false;
+
   constructor() {
     this.initAudioElement();
 
-    // Whenever location or canvas cards change, verify audio cache
+    // Whenever location or canvas cards change, verify and prepare audio story
     effect(() => {
       const location = this.boardState.selectedLocation();
       const cards = this.boardState.canvasCards();
@@ -81,14 +95,20 @@ export class AiAudioService {
     this.audioElement.preload = 'metadata';
 
     this.audioElement.addEventListener('timeupdate', () => {
-      if (this.audioElement) {
+      if (this.audioElement && !this.isUsingTTS) {
         this.currentTime.set(this.audioElement.currentTime);
       }
     });
 
     this.audioElement.addEventListener('loadedmetadata', () => {
-      if (this.audioElement) {
-        this.duration.set(this.audioElement.duration || 0);
+      if (this.audioElement && this.audioElement.duration && !isNaN(this.audioElement.duration) && !this.isUsingTTS) {
+        this.duration.set(this.audioElement.duration);
+      }
+    });
+
+    this.audioElement.addEventListener('durationchange', () => {
+      if (this.audioElement && this.audioElement.duration && !isNaN(this.audioElement.duration) && !this.isUsingTTS) {
+        this.duration.set(this.audioElement.duration);
       }
     });
 
@@ -98,16 +118,28 @@ export class AiAudioService {
     });
 
     this.audioElement.addEventListener('pause', () => {
-      this.isPlaying.set(false);
+      if (!this.isUsingTTS) {
+        this.isPlaying.set(false);
+      }
     });
 
     this.audioElement.addEventListener('play', () => {
-      this.isPlaying.set(true);
+      if (!this.isUsingTTS) {
+        this.isPlaying.set(true);
+      }
     });
 
     this.audioElement.addEventListener('error', () => {
-      this.isPlaying.set(false);
-      this.errorMessage.set('Failed to play audio stream.');
+      if (!this.isUsingTTS) {
+        console.warn('Audio stream error, switching to Speech Synthesis fallback');
+        const text = this.currentStory()?.transcript;
+        if (text) {
+          this.playSpeechSynthesis(text);
+        } else {
+          this.isPlaying.set(false);
+          this.errorMessage.set('Failed to play audio stream.');
+        }
+      }
     });
   }
 
@@ -130,7 +162,6 @@ export class AiAudioService {
       return hashArr.map((b) => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // Fallback simple hash for non-crypto contexts
     let hash = 0;
     for (let i = 0; i < raw.length; i++) {
       hash = (hash << 5) - hash + raw.charCodeAt(i);
@@ -146,6 +177,10 @@ export class AiAudioService {
     // Stop playback if playing on change
     if (this.isPlaying()) {
       this.pause();
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      if (this.ttsTimer) clearInterval(this.ttsTimer);
     }
 
     const locId = location?.id || null;
@@ -172,6 +207,7 @@ export class AiAudioService {
             cached: true,
             updated_at: data.updated_at
           });
+          this.duration.set(28);
           return;
         }
       }
@@ -179,142 +215,228 @@ export class AiAudioService {
       // Fallback
     }
 
-    // Check demo initial stories
-    if (locId && DEMO_STORIES[locId]) {
-      const demo = DEMO_STORIES[locId];
-      // In demo mode, if cards count didn't change from default, treat as cached valid
-      this.currentStory.set(demo);
-      this.isCacheValid.set(true);
-      return;
+    // Match by District Name or initial demo story
+    const matched = this.getStoryForLocation(location, cards, newHash);
+    this.currentStory.set(matched);
+    this.isCacheValid.set(true);
+    this.duration.set(
+      matched.audio_url
+        ? 28
+        : Math.max(10, Math.round(matched.transcript.split(/\s+/).length / 2.3))
+    );
+  }
+
+  private getStoryForLocation(
+    location: LocationPin | null,
+    cards: MemoryItem[],
+    hash: string
+  ): AudioStoryData {
+    const districtLower = (location?.district || '').toLowerCase();
+    const city = location?.city || 'Brighton';
+    const district = location?.district || 'Brighton';
+
+    if (districtLower.includes('preston')) {
+      return {
+        ...DEMO_STORIES['preston-park'],
+        location_id: location?.id || 'loc-1',
+        content_hash: hash
+      };
     }
 
-    // Global view or uncached district
-    this.currentStory.set({
-      location_id: locId,
-      content_hash: newHash,
-      audio_url: '/audio/brighton-global.mp3',
-      transcript:
-        'Welcome to the living historical archive of Brighton. For generations, this coastal town has gathered artists, travelers, and neighbors beneath sea breezes and Victorian promenades. From the historic elm avenues of Preston Park to the vibrant artisan lanes of North Laine, each memory preserved here safeguards the authentic spirit of this community.',
-      cached: true
-    });
-    this.isCacheValid.set(true);
+    if (districtLower.includes('laine')) {
+      return {
+        ...DEMO_STORIES['north-laine'],
+        location_id: location?.id || 'loc-2',
+        content_hash: hash
+      };
+    }
+
+    if (districtLower.includes('hove')) {
+      return {
+        ...DEMO_STORIES['hove-seafront'],
+        location_id: location?.id || 'loc-3',
+        content_hash: hash
+      };
+    }
+
+    // Dynamic contextual narration for any other district worldwide
+    if (location?.district) {
+      const memoryTitles = cards
+        .slice(0, 3)
+        .map((c) => c.title)
+        .filter(Boolean)
+        .join(', ');
+      const memoryContext = memoryTitles
+        ? ` Reflecting local moments like "${memoryTitles}", this`
+        : ' This';
+      return {
+        location_id: location.id,
+        content_hash: hash,
+        audio_url: '', // Speaks live via Speech Synthesis
+        transcript: `Welcome to the neighborhood archive of ${district}, ${city}.${memoryContext} collective memory board preserves the living history, atmosphere, and human stories of our shared streets. Every photo, video, and time-capsule letter safeguarded here ensures that today's quiet everyday moments remain vivid for future generations.`,
+        cached: true
+      };
+    }
+
+    // Global Brighton overview
+    return {
+      ...DEMO_STORIES['brighton-global'],
+      location_id: null,
+      content_hash: hash
+    };
   }
 
   /**
-   * Play / Generate Action Handler:
-   * - If cache is valid: plays immediately (available to guests and users alike).
-   * - If cache is missing/outdated:
-   *   - If guest: prompts Sign-In modal.
-   *   - If user: calls generate-audio-story Edge Function, saves result, and auto-plays!
+   * Play / Pause / Synthesize Action Handler
    */
   async handlePlayOrGenerate(): Promise<void> {
     this.errorMessage.set(null);
 
-    // If already playing, toggle pause
+    // 1. If currently playing, toggle pause
     if (this.isPlaying()) {
       this.pause();
       return;
     }
 
-    // Case 1: Cache is valid - play directly (Guests + Users allowed)
-    if (this.isCacheValid() && this.currentStory()?.audio_url) {
-      await this.playAudio(this.currentStory()!.audio_url);
+    // 2. If TTS was paused mid-speech, resume
+    if (this.isUsingTTS && typeof window !== 'undefined' && window.speechSynthesis?.paused) {
+      window.speechSynthesis.resume();
+      this.isPlaying.set(true);
+      this.ttsTimer = setInterval(() => {
+        this.currentTime.update((c) => Math.min(this.duration(), c + 0.2));
+      }, 200);
       return;
     }
 
-    // Case 2: Cache is outdated or missing
-    if (!this.auth.isAuthenticated()) {
-      // Intercept Guest: Prompt registration to generate fresh AI stories
-      this.authModal.openModal(
-        'Sign in to synthesize new AI historical audio stories with Google Gemini & ElevenLabs.'
-      );
+    const story = this.currentStory();
+    if (!story) return;
+
+    // 3. If pre-recorded audio URL exists, play with fallback
+    if (story.audio_url) {
+      this.isUsingTTS = false;
+      await this.playAudio(story.audio_url);
       return;
     }
 
-    // Case 3: Authenticated user triggers synthesis
-    await this.generateNewStory();
+    // 4. If no audio URL, synthesize immediately with Web Speech
+    if (story.transcript) {
+      this.playSpeechSynthesis(story.transcript);
+    }
   }
 
   /**
-   * Invokes Edge Function `generate-audio-story`
+   * Direct HTML5 Audio playback with safe URL resolution
    */
-  async generateNewStory(): Promise<void> {
-    const location = this.boardState.selectedLocation();
-    const cards = this.boardState.canvasCards();
-    const session = await this.supabase.client.auth.getSession();
-    const token = session.data.session?.access_token;
+  async playAudio(url: string): Promise<void> {
+    if (typeof window === 'undefined') return;
 
-    if (!token) {
-      this.authModal.openModal('Please sign in to generate audio stories.');
+    if (!this.audioElement) {
+      this.initAudioElement();
+    }
+
+    try {
+      const resolvedUrl = new URL(url, window.location.href).href;
+      if (this.audioElement && this.audioElement.src !== resolvedUrl) {
+        this.audioElement.src = resolvedUrl;
+      }
+
+      if (this.audioElement) {
+        await this.audioElement.play();
+        this.isUsingTTS = false;
+        this.isPlaying.set(true);
+      }
+    } catch (err) {
+      console.warn('HTMLAudioElement play failed or blocked, falling back to Web Speech Synthesis:', err);
+      const text = this.currentStory()?.transcript;
+      if (text) {
+        this.playSpeechSynthesis(text);
+      } else {
+        this.isPlaying.set(false);
+      }
+    }
+  }
+
+  /**
+   * Browser-native Speech Synthesis (TTS) engine
+   */
+  playSpeechSynthesis(text: string): void {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      this.errorMessage.set('Audio narration is not supported in this browser.');
       return;
     }
 
-    this.isGenerating.set(true);
-    this.errorMessage.set(null);
-
-    try {
-      const { data, error } = await this.supabase.client.functions.invoke(
-        'generate-audio-story',
-        {
-          body: {
-            location_id: location?.id || null,
-            memory_ids: cards.map((c) => c.id),
-            district: location?.district,
-            city: location?.city,
-            country: location?.country
-          },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (error || !data) {
-        throw new Error(error?.message || 'Failed to synthesize AI audio story');
-      }
-
-      const newStory: AudioStoryData = {
-        location_id: data.location_id,
-        content_hash: data.content_hash,
-        audio_url: data.audio_url,
-        transcript: data.transcript,
-        cached: data.cached
-      };
-
-      this.currentStory.set(newStory);
-      this.isCacheValid.set(true);
-
-      // Auto-play newly synthesized narration
-      await this.playAudio(newStory.audio_url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error generating story';
-      this.errorMessage.set(msg);
-      // Fallback: play existing preview if available
-      if (this.currentStory()?.audio_url) {
-        await this.playAudio(this.currentStory()!.audio_url);
-      }
-    } finally {
-      this.isGenerating.set(false);
+    if (this.audioElement) {
+      this.audioElement.pause();
     }
-  }
 
-  async playAudio(url: string): Promise<void> {
-    if (!this.audioElement) return;
+    window.speechSynthesis.cancel();
+    if (this.ttsTimer) clearInterval(this.ttsTimer);
 
-    try {
-      if (this.audioElement.src !== url) {
-        this.audioElement.src = url;
-        this.audioElement.load();
-      }
-      await this.audioElement.play();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice =
+      voices.find(
+        (v) =>
+          v.lang.startsWith('en') &&
+          (v.name.includes('Natural') ||
+            v.name.includes('Google') ||
+            v.name.includes('Samantha') ||
+            v.name.includes('Daniel') ||
+            v.name.includes('Alex'))
+      ) || voices.find((v) => v.lang.startsWith('en'));
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const estDuration = Math.max(10, Math.round(wordCount / 2.3));
+    this.duration.set(estDuration);
+
+    this.ttsStartTime = Date.now();
+    this.isUsingTTS = true;
+
+    utterance.onstart = () => {
       this.isPlaying.set(true);
-    } catch (err) {
-      console.error('Audio playback error:', err);
+      this.ttsTimer = setInterval(() => {
+        const elapsed = (Date.now() - this.ttsStartTime) / 1000;
+        if (elapsed <= this.duration()) {
+          this.currentTime.set(elapsed);
+        } else {
+          this.currentTime.set(this.duration());
+        }
+      }, 200);
+    };
+
+    utterance.onend = () => {
       this.isPlaying.set(false);
-    }
+      this.currentTime.set(0);
+      if (this.ttsTimer) clearInterval(this.ttsTimer);
+    };
+
+    utterance.onerror = (err) => {
+      console.warn('SpeechSynthesis error:', err);
+      this.isPlaying.set(false);
+      if (this.ttsTimer) clearInterval(this.ttsTimer);
+    };
+
+    this.currentUtterance = utterance;
+    this.isPlaying.set(true);
+    window.speechSynthesis.speak(utterance);
   }
 
   pause(): void {
+    if (this.isUsingTTS && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.pause();
+      if (this.ttsTimer) clearInterval(this.ttsTimer);
+      this.isPlaying.set(false);
+      return;
+    }
+
     if (this.audioElement) {
       this.audioElement.pause();
       this.isPlaying.set(false);
@@ -322,9 +444,9 @@ export class AiAudioService {
   }
 
   seek(seconds: number): void {
-    if (this.audioElement) {
+    this.currentTime.set(seconds);
+    if (!this.isUsingTTS && this.audioElement) {
       this.audioElement.currentTime = seconds;
-      this.currentTime.set(seconds);
     }
   }
 }
