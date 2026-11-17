@@ -156,10 +156,27 @@ export function passwordMatchValidator(passwordKey: string, confirmPasswordKey: 
                 </div>
               } @else {
                 @if (errorMessage()) {
-                  <div class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2">
-                    <span>⚠️</span>
-                    <span>{{ errorMessage() }}</span>
-                  </div>
+                  @if (isRateLimitError()) {
+                    <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 space-y-2 animate-fadeIn">
+                      <div class="flex items-center gap-1.5 font-bold text-amber-900">
+                        <span>⏳</span>
+                        <span>Email Rate Limit Reached</span>
+                      </div>
+                      <p class="leading-relaxed text-[11px] text-amber-800">
+                        Supabase built-in email service limits sending to a few emails per hour to prevent spam.
+                      </p>
+                      <div class="p-2.5 bg-white/80 rounded-lg border border-amber-200 text-[11px] text-amber-900 space-y-1">
+                        <strong>What to do:</strong>
+                        <p class="text-[10px] text-amber-800">1. Please wait 1–2 minutes before requesting another reset link.</p>
+                        <p class="text-[10px] text-amber-800">2. Check your Spam or Promotions folder for links sent earlier.</p>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2">
+                      <span>⚠️</span>
+                      <span>{{ errorMessage() }}</span>
+                    </div>
+                  }
                 }
 
                 <form [formGroup]="forgotPasswordForm" (ngSubmit)="onSendResetLink()" class="space-y-4">
@@ -183,12 +200,14 @@ export function passwordMatchValidator(passwordKey: string, confirmPasswordKey: 
 
                   <button 
                     type="submit"
-                    [disabled]="isSubmitting() || forgotPasswordForm.invalid"
+                    [disabled]="isSubmitting() || forgotPasswordForm.invalid || cooldownSeconds() > 0"
                     class="w-full py-3 px-4 bg-accent hover:bg-[#b04d29] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     @if (isSubmitting()) {
                       <span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
                       <span>Sending link...</span>
+                    } @else if (cooldownSeconds() > 0) {
+                      <span>Please wait {{ cooldownSeconds() }}s</span>
                     } @else {
                       <span>Send Reset Link</span>
                     }
@@ -607,6 +626,8 @@ export class AuthModalComponent {
   readonly confirmationSentEmail = signal<string | null>(null);
   readonly isResendingInModal = signal<boolean>(false);
   readonly resendModalSuccess = signal<boolean>(false);
+  readonly cooldownSeconds = signal<number>(0);
+  private cooldownTimer: any = null;
 
   // Password Recovery state
   readonly resetLinkSent = signal<boolean>(false);
@@ -684,6 +705,27 @@ export class AuthModalComponent {
     return msg.includes('email not confirmed') || msg.includes('confirm your email');
   });
 
+  readonly isRateLimitError = computed(() => {
+    const msg = (this.errorMessage() || '').toLowerCase();
+    return msg.includes('rate limit') || msg.includes('over_email_send_rate_limit') || msg.includes('too many requests');
+  });
+
+  startCooldown(seconds = 60): void {
+    if (this.cooldownTimer) {
+      clearInterval(this.cooldownTimer);
+    }
+    this.cooldownSeconds.set(seconds);
+    this.cooldownTimer = setInterval(() => {
+      this.cooldownSeconds.update(s => {
+        if (s <= 1) {
+          clearInterval(this.cooldownTimer);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
   constructor() {
     // Listen to password inputs to update live strength indicators
     this.authForm.get('password')?.valueChanges.subscribe(val => {
@@ -759,6 +801,9 @@ export class AuthModalComponent {
 
     if (res.error) {
       this.errorMessage.set(res.error);
+      if (res.error.toLowerCase().includes('rate limit')) {
+        this.startCooldown(60);
+      }
     } else {
       this.resendModalSuccess.set(true);
       setTimeout(() => this.resendModalSuccess.set(false), 6000);
@@ -773,7 +818,7 @@ export class AuthModalComponent {
   }
 
   async onSendResetLink(): Promise<void> {
-    if (this.forgotPasswordForm.invalid || this.isSubmitting()) {
+    if (this.forgotPasswordForm.invalid || this.isSubmitting() || this.cooldownSeconds() > 0) {
       this.forgotPasswordForm.markAllAsTouched();
       return;
     }
@@ -787,6 +832,9 @@ export class AuthModalComponent {
 
     if (res.error) {
       this.errorMessage.set(res.error);
+      if (res.error.toLowerCase().includes('rate limit')) {
+        this.startCooldown(60);
+      }
     } else {
       this.resetLinkSent.set(true);
     }
