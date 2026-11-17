@@ -18,7 +18,7 @@ import { MapboxViewComponent } from './mapbox-view/mapbox-view.component';
     MapboxViewComponent
   ],
   template: `
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3.5 sm:gap-4">
       <!-- ROW 1: Global Wishes Panel (FR-2) -->
       <app-wishes-panel />
 

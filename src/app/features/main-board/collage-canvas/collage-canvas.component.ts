@@ -20,7 +20,7 @@ interface CardLayout {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="space-y-2.5">
+    <section class="space-y-2">
       <!-- CANVAS HEADER BAR -->
       <div class="flex flex-wrap items-center justify-between gap-2 px-1">
         <div class="flex items-center gap-2">

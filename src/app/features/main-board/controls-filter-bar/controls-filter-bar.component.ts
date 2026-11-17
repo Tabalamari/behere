@@ -14,9 +14,9 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
   template: `
-    <section class="space-y-3">
+    <section class="space-y-2.5">
       <!-- MAIN CONTROLS ROW -->
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white border border-[#E5DDD3] rounded-2xl p-3.5 shadow-xs">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white border border-[#E5DDD3] rounded-2xl p-3 sm:p-3.5 shadow-xs">
         <!-- ROW 1 (or Left on desktop): Creation Action Buttons -->
         <div class="grid grid-cols-3 gap-2 w-full lg:w-auto">
           <button 

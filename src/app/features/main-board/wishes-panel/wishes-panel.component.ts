@@ -10,7 +10,7 @@ import { AuthModalService } from '../../../core/services/auth-modal.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="bg-white border border-[#E5DDD3] rounded-2xl p-3.5 shadow-xs transition-all">
+    <section class="bg-white border border-[#E5DDD3] rounded-2xl p-3 sm:p-3.5 shadow-xs transition-all">
       <div class="flex flex-wrap items-center justify-between gap-2.5">
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">

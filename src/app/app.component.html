@@ -2,13 +2,11 @@
   <!-- Top Header with Brand, Live Counters (🔒 Padlock & ✋ Hand), About Modal, Auth / Cabinet Link -->
   <app-top-header />
 
-  <!-- Global Email Confirmation Notice Banner -->
-  <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-3">
-    <app-email-confirmation-notice />
-  </div>
-
   <!-- Main Content Layout (Routes: Main Board Canvas & User Cabinet) -->
-  <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
+  <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-2.5 sm:pt-3.5 pb-6 sm:pb-8 flex flex-col gap-3.5 sm:gap-4">
+    <!-- Global Email Confirmation Notice Banner -->
+    <app-email-confirmation-notice />
+
     <router-outlet />
   </main>
 

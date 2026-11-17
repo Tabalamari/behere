@@ -10,7 +10,7 @@ import { AuthModalService } from '../../services/auth-modal.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <header class="border-b border-[#E5DDD3] bg-[#FAF7F2]/95 backdrop-blur sticky top-0 z-20 px-4 md:px-8 py-3 transition-all">
+    <header class="border-b border-[#E5DDD3] bg-[#FAF7F2]/95 backdrop-blur sticky top-0 z-20 px-4 md:px-8 py-2.5 transition-all">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <!-- Brand Logo & Title -->
         <div 
@@ -98,7 +98,7 @@ import { AuthModalService } from '../../services/auth-modal.service';
 
       <!-- Dismissible Walkthrough Tip Banner for Guests -->
       @if (showGuestTip()) {
-        <div class="mt-2.5 px-3 py-2 rounded-xl bg-[#F7E6DF] border border-[#E8C5B8] text-[11px] text-[#6B2D16] flex items-center justify-between gap-2 animate-fadeIn">
+        <div class="mt-2 px-3 py-1.5 rounded-xl bg-[#F7E6DF] border border-[#E8C5B8] text-[11px] text-[#6B2D16] flex items-center justify-between gap-2 animate-fadeIn">
           <div>
             <strong class="font-semibold">Walkthrough Tip:</strong>
             <span> You are browsing as a <b>Guest</b>. Try "Wish for me", tap any district pin on the Map, or test <b>Add Memory</b> to authenticate.</span>

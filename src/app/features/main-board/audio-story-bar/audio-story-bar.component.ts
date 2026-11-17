@@ -9,7 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="bg-white rounded-3xl p-4 sm:p-5 border border-[#E5DDD3] shadow-sm space-y-3 transition-all relative overflow-hidden">
+    <section class="bg-white rounded-3xl p-3.5 sm:p-4 border border-[#E5DDD3] shadow-sm space-y-2.5 transition-all relative overflow-hidden">
       <!-- Top Row: Badge + Status + Expand Transcript Toggle -->
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
