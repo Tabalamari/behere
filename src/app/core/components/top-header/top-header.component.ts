@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { BoardStateService } from '../../services/board-state.service';
@@ -95,6 +95,23 @@ import { AuthModalService } from '../../services/auth-modal.service';
           </div>
         </div>
       </div>
+
+      <!-- Dismissible Walkthrough Tip Banner for Unauthenticated Guests -->
+      @if (showGuestTip()) {
+        <div class="mt-2 px-3 py-1.5 rounded-xl bg-[#F7E6DF] border border-[#E8C5B8] text-[11px] text-[#6B2D16] flex items-center justify-between gap-2 animate-fadeIn">
+          <div>
+            <strong class="font-semibold">Walkthrough Tip:</strong>
+            <span> You are browsing as a <b>Guest</b>. Try "Wish for me", tap any district pin on the Map, or test <b>Add Memory</b> to authenticate.</span>
+          </div>
+          <button 
+            type="button"
+            (click)="dismissGuestTip()"
+            title="Dismiss tip"
+            class="text-[#6B2D16]/70 hover:text-[#6B2D16] font-bold px-1.5 py-0.5 rounded text-xs cursor-pointer">
+            ✕
+          </button>
+        </div>
+      }
     </header>
 
     <!-- ABOUT MODAL DIALOG -->
@@ -172,6 +189,10 @@ export class TopHeaderComponent {
   private router = inject(Router);
 
   readonly isAboutOpen = signal<boolean>(false);
+  private isTipDismissed = signal<boolean>(false);
+
+  // Visible strictly while the user is not authenticated and has not dismissed it
+  readonly showGuestTip = computed(() => !this.auth.isAuthenticated() && !this.isTipDismissed());
 
   onLogoClick(): void {
     this.boardState.clearLocation();
@@ -192,5 +213,9 @@ export class TopHeaderComponent {
 
   signOut(): void {
     this.auth.signOut();
+  }
+
+  dismissGuestTip(): void {
+    this.isTipDismissed.set(true);
   }
 }
