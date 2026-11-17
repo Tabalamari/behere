@@ -3,6 +3,8 @@ export type MemoryType = 'photo' | 'video' | 'letter';
 export interface UserProfile {
   id: string;
   nickname: string;
+  email?: string;
+  email_confirmed_at?: string | null;
   created_at: string;
 }
 

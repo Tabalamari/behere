@@ -31,9 +31,17 @@ interface CountdownDisplay {
               <h1 class="font-serif-display text-2xl sm:text-3xl font-bold text-[#231F20]">
                 &#64;{{ auth.currentUser()?.nickname }}
               </h1>
-              <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
-                Active Member
-              </span>
+              @if (auth.isEmailConfirmed()) {
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold flex items-center gap-1">
+                  <span>✓</span>
+                  <span>Verified Member</span>
+                </span>
+              } @else {
+                <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1">
+                  <span>⚠️</span>
+                  <span>Unverified Email</span>
+                </span>
+              }
             </div>
             <p class="text-xs text-[#6E665F] mt-1 flex items-center gap-2">
               <span>Hyperlocal Contributor</span>
@@ -139,6 +147,55 @@ interface CountdownDisplay {
               <span>{{ profileError() }}</span>
             </div>
           }
+
+          <!-- EMAIL VERIFICATION STATUS CARD -->
+          <div 
+            class="p-4 rounded-2xl border space-y-2.5 transition"
+            [ngClass]="auth.isEmailConfirmed() ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/80 border-amber-300'"
+          >
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <span class="text-xs font-semibold text-[#231F20] block">Account Email</span>
+                <span class="font-mono text-xs text-[#6E665F]">{{ auth.userEmail() }}</span>
+              </div>
+              <div>
+                @if (auth.isEmailConfirmed()) {
+                  <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold flex items-center gap-1">
+                    <span>✓</span>
+                    <span>Email Confirmed</span>
+                  </span>
+                } @else {
+                  <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1">
+                    <span>⚠️</span>
+                    <span>Confirmation Required</span>
+                  </span>
+                }
+              </div>
+            </div>
+
+            @if (!auth.isEmailConfirmed()) {
+              <div class="pt-2 border-t border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <p class="text-[11px] text-amber-900 leading-relaxed">
+                  We sent a confirmation email to your email address. Please click the link in your inbox to verify.
+                </p>
+                <button
+                  type="button"
+                  [disabled]="isResendingInCabinet()"
+                  (click)="onResendCabinetEmail()"
+                  class="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-[#C85A32] text-xs font-semibold hover:bg-stone-50 disabled:opacity-60 transition shrink-0 cursor-pointer flex items-center gap-1"
+                >
+                  @if (isResendingInCabinet()) {
+                    <span class="w-3 h-3 border-2 border-[#C85A32] border-t-transparent rounded-full animate-spin"></span>
+                    <span>Sending...</span>
+                  } @else if (cabinetResendSuccess()) {
+                    <span class="text-emerald-700">✓ Resent!</span>
+                  } @else {
+                    <span>Resend email</span>
+                  }
+                </button>
+              </div>
+            }
+          </div>
 
           <form [formGroup]="profileForm" (ngSubmit)="onSaveProfile()" class="space-y-4">
             <div>
@@ -524,6 +581,8 @@ export class UserCabinetComponent implements OnInit, OnDestroy {
   readonly isSavingProfile = signal<boolean>(false);
   readonly profileSuccess = signal<string | null>(null);
   readonly profileError = signal<string | null>(null);
+  readonly isResendingInCabinet = signal<boolean>(false);
+  readonly cabinetResendSuccess = signal<boolean>(false);
 
   // Unlocked letters
   readonly unlockedLetters = signal<MemoryItem[]>([]);
@@ -613,6 +672,20 @@ export class UserCabinetComponent implements OnInit, OnDestroy {
       this.mediaList.set(items);
     } finally {
       this.isLoadingMedia.set(false);
+    }
+  }
+
+  async onResendCabinetEmail(): Promise<void> {
+    if (this.isResendingInCabinet()) return;
+    this.isResendingInCabinet.set(true);
+    this.cabinetResendSuccess.set(false);
+
+    const res = await this.auth.resendConfirmationEmail();
+    this.isResendingInCabinet.set(false);
+
+    if (res.success) {
+      this.cabinetResendSuccess.set(true);
+      setTimeout(() => this.cabinetResendSuccess.set(false), 5000);
     }
   }
 

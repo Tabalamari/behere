@@ -552,6 +552,11 @@ export class ControlsFilterBarComponent {
       return;
     }
 
+    if (this.auth.needsEmailConfirmation()) {
+      this.authModal.openModal('Please verify your email address before creating memories or sealing time capsules. Check your inbox for the confirmation link.');
+      return;
+    }
+
     this.modalType.set(type);
     this.selectedFile.set(null);
     this.previewUrl.set(null);
@@ -613,6 +618,11 @@ export class ControlsFilterBarComponent {
 
   async submitMemory(): Promise<void> {
     if (this.createForm.invalid) return;
+
+    if (this.auth.needsEmailConfirmation()) {
+      this.formGeneralError.set('Please verify your email address before submitting memories.');
+      return;
+    }
 
     const type = this.modalType();
     const formVals = this.createForm.value;
