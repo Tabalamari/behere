@@ -309,19 +309,77 @@ export class AiAudioService {
     }
 
     const story = this.currentStory();
-    if (!story) return;
 
-    // 3. If pre-recorded audio URL exists, play with fallback
-    if (story.audio_url) {
+    // 3. If pre-recorded / cached audio URL exists, play with fallback
+    if (story?.audio_url) {
       this.isUsingTTS = false;
       await this.playAudio(story.audio_url);
       return;
     }
 
-    // 4. If no audio URL, synthesize immediately with Web Speech
-    if (story.transcript) {
+    // 4. If user is logged in, attempt real-time ElevenLabs generation via Supabase Edge Function
+    if (this.auth.isAuthenticated()) {
+      const success = await this.generateElevenLabsStory();
+      if (success) return;
+    }
+
+    // 5. Fallback: synthesize immediately with Web Speech
+    if (story?.transcript) {
       this.playSpeechSynthesis(story.transcript);
     }
+  }
+
+  /**
+   * Invokes the deployed Supabase Edge Function `generate-audio-story` (Gemini + ElevenLabs)
+   */
+  async generateElevenLabsStory(): Promise<boolean> {
+    const session = await this.supabase.client.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) return false;
+
+    const location = this.boardState.selectedLocation();
+    const cards = this.boardState.canvasCards();
+
+    this.isGenerating.set(true);
+    this.errorMessage.set(null);
+
+    try {
+      const { data, error } = await this.supabase.client.functions.invoke(
+        'generate-audio-story',
+        {
+          body: {
+            location_id: location?.id || null,
+            memory_ids: cards.map((c) => c.id),
+            district: location?.district,
+            city: location?.city,
+            country: location?.country
+          },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!error && data?.audio_url) {
+        const newStory: AudioStoryData = {
+          location_id: data.location_id,
+          content_hash: data.content_hash,
+          audio_url: data.audio_url,
+          transcript: data.transcript || this.currentStory()?.transcript || '',
+          cached: true
+        };
+        this.currentStory.set(newStory);
+        this.isCacheValid.set(true);
+        this.duration.set(28);
+        await this.playAudio(newStory.audio_url);
+        return true;
+      }
+    } catch (err) {
+      console.warn('ElevenLabs Edge Function generation error, falling back:', err);
+    } finally {
+      this.isGenerating.set(false);
+    }
+    return false;
   }
 
   /**
