@@ -86,20 +86,27 @@ interface CardLayout {
               </div>
             } @else {
               <!-- Photo or Video Card -->
-              <div class="relative w-full h-full rounded-lg overflow-hidden bg-stone-200">
-                <img 
-                  [src]="card.item.media_url || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80'" 
-                  [alt]="card.item.title"
-                  loading="lazy"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                
+              <div class="relative w-full h-full rounded-lg overflow-hidden bg-stone-900">
                 @if (card.item.type === 'video') {
-                  <span class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[8px] sm:text-[9px] px-1 py-0.5 rounded-md font-bold flex items-center gap-0.5">
+                  <video 
+                    [src]="card.item.media_url" 
+                    preload="metadata" 
+                    muted 
+                    playsinline 
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none">
+                  </video>
+                  <span class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[8px] sm:text-[9px] px-1 py-0.5 rounded-md font-bold flex items-center gap-0.5 z-10 pointer-events-none">
                     <span>▶</span> 1m
                   </span>
+                } @else {
+                  <img 
+                    [src]="card.item.media_url || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80'" 
+                    [alt]="card.item.title"
+                    loading="lazy"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 }
 
-                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 sm:p-1.5">
+                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 sm:p-1.5 z-10 pointer-events-none">
                   <p class="text-[9px] sm:text-[10px] text-white font-semibold truncate leading-tight">
                     {{ card.item.title }}
                   </p>
@@ -159,16 +166,14 @@ interface CardLayout {
                   "{{ item.letter_text || item.title }}"
                 </div>
               } @else if (item.type === 'video') {
-                <div class="relative bg-black flex items-center justify-center">
-                  <img [src]="item.media_url" class="w-full max-h-80 object-cover opacity-80" alt="Video cover" />
-                  <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/30 text-white">
-                    <div class="w-12 h-12 rounded-full bg-[#C85A32] text-white flex items-center justify-center text-xl shadow-lg cursor-pointer hover:scale-110 transition">
-                      ▶
-                    </div>
-                    <span class="text-xs font-semibold mt-2 bg-black/60 px-2.5 py-1 rounded-full">
-                      1-min Hyperlocal Video Clip
-                    </span>
-                  </div>
+                <div class="relative bg-black flex items-center justify-center rounded-2xl overflow-hidden min-h-[220px]">
+                  <video 
+                    [src]="item.media_url" 
+                    controls 
+                    autoplay 
+                    playsinline 
+                    class="w-full max-h-[60vh] object-contain rounded-2xl bg-black">
+                  </video>
                 </div>
               } @else {
                 <img 

@@ -15,6 +15,10 @@ export interface LockedLetterItem {
   created_at: string;
 }
 
+export function isValidUUID(str?: string | null): boolean {
+  return !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 const DEMO_LOCATIONS: Record<string, LocationPin> = {
   preston: {
     id: 'loc-1',
@@ -459,15 +463,16 @@ export class MemoryService {
           locations(*)
         `)
         .order('created_at', { ascending: false })
-        .limit(25);
+        .limit(50);
 
-      if (locationId) {
+      // Only query by location_id if it's a valid PostgreSQL UUID
+      if (locationId && isValidUUID(locationId)) {
         query = query.eq('location_id', locationId);
       }
 
       const { data, error } = await query;
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: MemoryItem[] = data.map((row: any) => ({
           id: row.id,
           user_id: row.user_id,
@@ -483,25 +488,62 @@ export class MemoryService {
           location: row.locations
         }));
 
-        this.memories.set(mapped);
-        this.boardState.canvasCards.set(mapped);
-        this.isLoading.set(false);
-        return mapped;
+        // Merge DB memories with any user memories added in this session so they never disappear
+        const unmappedLocal = this.userLocalMemories.filter(
+          (lm) => !mapped.some((m) => m.id === lm.id)
+        );
+        const combined = [...unmappedLocal, ...mapped];
+
+        if (combined.length > 0) {
+          // If a location filter is active, filter memories matching district or locationId
+          let filtered = combined;
+          const currentDistrict = this.boardState.filterDistrict()?.trim().toLowerCase();
+          if (currentDistrict) {
+            const districtMatches = combined.filter(
+              (m) =>
+                m.location?.district?.toLowerCase().includes(currentDistrict) ||
+                m.location_id === locationId
+            );
+            if (districtMatches.length > 0) {
+              filtered = districtMatches;
+            }
+          }
+
+          // Fill up to 25 items with demo fallback if needed so the 5x5 grid remains complete
+          const fullGrid = [
+            ...filtered,
+            ...FULL_DEMO_25_MEMORIES.filter((d) => !filtered.some((c) => c.title === d.title))
+          ].slice(0, 25);
+
+          this.memories.set(fullGrid);
+          this.boardState.canvasCards.set(fullGrid);
+          this.isLoading.set(false);
+          return fullGrid;
+        }
       }
     } catch {
       // Offline fallback
     }
 
-    // Filter fallback demo memories
-    let fallback = FULL_DEMO_25_MEMORIES;
-    if (locationId) {
-      fallback = FULL_DEMO_25_MEMORIES.filter((m) => m.location_id === locationId);
-      if (fallback.length === 0) fallback = FULL_DEMO_25_MEMORIES;
+    // Filter fallback demo memories if no DB items found
+    let fallback = [...this.userLocalMemories, ...FULL_DEMO_25_MEMORIES];
+    const currentDistrict = this.boardState.filterDistrict()?.trim().toLowerCase();
+    if (currentDistrict) {
+      const filtered = fallback.filter(
+        (m) =>
+          m.location?.district?.toLowerCase().includes(currentDistrict) ||
+          m.location_id === locationId
+      );
+      if (filtered.length > 0) fallback = filtered;
+    } else if (locationId) {
+      const filtered = fallback.filter((m) => m.location_id === locationId);
+      if (filtered.length > 0) fallback = filtered;
     }
-    this.memories.set(fallback);
-    this.boardState.canvasCards.set(fallback);
+    const finalFallback = fallback.slice(0, 25);
+    this.memories.set(finalFallback);
+    this.boardState.canvasCards.set(finalFallback);
     this.isLoading.set(false);
-    return fallback;
+    return finalFallback;
   }
 
   async fetchComments(memoryId: string): Promise<CommentItem[]> {
@@ -606,25 +648,47 @@ export class MemoryService {
 
     try {
       let locId = params.location.id;
-      if (!locId || locId.startsWith('temp-') || locId.startsWith('osm-')) {
-        const { data: locData, error: locError } = await this.supabase.client
-          .from('locations')
-          .upsert(
-            {
-              osm_id: params.location.osm_id ? parseInt(String(params.location.osm_id).replace(/\D/g, '') || '0', 10) : null,
-              country: params.location.country,
-              city: params.location.city,
-              district: params.location.district,
-              lat: params.location.lat,
-              lng: params.location.lng
-            },
-            { onConflict: 'osm_id' }
-          )
-          .select()
-          .single();
+      let validLocId: string | null = isValidUUID(locId) ? locId : null;
 
-        if (!locError && locData?.id) {
-          locId = locData.id;
+      // If locId is not a valid UUID (e.g. 'loc-...', 'seed-...', 'c-...'), resolve or upsert in locations table
+      if (!validLocId) {
+        try {
+          const { data: existingLoc } = await this.supabase.client
+            .from('locations')
+            .select('id')
+            .eq('country', params.location.country)
+            .eq('city', params.location.city)
+            .eq('district', params.location.district)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingLoc?.id && isValidUUID(existingLoc.id)) {
+            validLocId = existingLoc.id;
+          } else {
+            const rawOsm = params.location.osm_id;
+            const osmNum = rawOsm && !isNaN(Number(rawOsm))
+              ? parseInt(String(rawOsm).replace(/\D/g, '') || '0', 10)
+              : null;
+
+            const { data: newLoc } = await this.supabase.client
+              .from('locations')
+              .insert({
+                osm_id: osmNum,
+                country: params.location.country || 'United Kingdom',
+                city: params.location.city || 'Brighton',
+                district: params.location.district || 'Preston Park',
+                lat: params.location.lat || 50.8409,
+                lng: params.location.lng || -0.1472
+              })
+              .select('id')
+              .single();
+
+            if (newLoc?.id && isValidUUID(newLoc.id)) {
+              validLocId = newLoc.id;
+            }
+          }
+        } catch {
+          // If location upsert fails, validLocId remains null to avoid aborting the memory insert
         }
       }
 
@@ -633,7 +697,7 @@ export class MemoryService {
 
       const insertPayload = {
         user_id: user.id,
-        location_id: locId,
+        location_id: validLocId,
         type: params.type,
         title: params.title.trim(),
         media_url: params.mediaUrl ?? null,
@@ -681,8 +745,8 @@ export class MemoryService {
       this.userLocalMemories.unshift(newItem);
 
       if (!isLocked && !newItem.is_private) {
-        this.memories.update((current) => [newItem, ...current]);
-        this.boardState.canvasCards.update((current) => [newItem, ...current]);
+        this.memories.update((current) => [newItem, ...current.filter((m) => m.id !== newItem.id)]);
+        this.boardState.canvasCards.update((current) => [newItem, ...current.filter((m) => m.id !== newItem.id)].slice(0, 25));
       }
 
       await this.boardState.refreshPlatformCounters();
@@ -895,8 +959,8 @@ export class MemoryService {
         .in('type', ['photo', 'video'])
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+      if (!error && data) {
+        const dbItems: MemoryItem[] = data.map((d: any) => ({
           id: d.id,
           user_id: d.user_id,
           location_id: d.location_id,
@@ -920,6 +984,11 @@ export class MemoryService {
               }
             : undefined
         }));
+
+        const localItems = this.userLocalMemories.filter(
+          (m) => m.user_id === user.id && (m.type === 'photo' || m.type === 'video') && !dbItems.some((dbi) => dbi.id === m.id)
+        );
+        return [...localItems, ...dbItems];
       }
     } catch {
       // Fallback

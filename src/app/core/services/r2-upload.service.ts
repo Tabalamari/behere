@@ -45,12 +45,23 @@ export class R2UploadService {
       video.preload = 'metadata';
       const objectUrl = URL.createObjectURL(file);
 
+      let isFinished = false;
       const cleanup = () => {
-        URL.revokeObjectURL(objectUrl);
-        video.remove();
+        if (!isFinished) {
+          isFinished = true;
+          URL.revokeObjectURL(objectUrl);
+          video.remove();
+        }
       };
 
+      // Safeguard timer to prevent freezing if browser doesn't fire loadedmetadata
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        resolve({ duration: 60 });
+      }, 3000);
+
       video.onloadedmetadata = () => {
+        clearTimeout(timeoutId);
         const duration = video.duration;
         cleanup();
         if (duration > 60.5) {
@@ -61,6 +72,7 @@ export class R2UploadService {
       };
 
       video.onerror = () => {
+        clearTimeout(timeoutId);
         cleanup();
         reject(new Error('Failed to parse video metadata or unsupported video format'));
       };
@@ -180,7 +192,13 @@ export class R2UploadService {
     if (presignError || !presignData?.uploadUrl) {
       // Fallback in local sandbox / offline preview mode
       const mockKey = `uploads/demo-${Date.now()}/${file.name}`;
-      const mockPublicUrl = URL.createObjectURL(bodyToUpload);
+      let mockPublicUrl: string;
+      try {
+        mockPublicUrl = await this.blobToDataUrl(bodyToUpload);
+      } catch {
+        mockPublicUrl = URL.createObjectURL(bodyToUpload);
+      }
+
       this.uploadState.set({
         percentage: 100,
         isUploading: false,
@@ -267,6 +285,21 @@ export class R2UploadService {
     } catch {
       return false;
     }
+  }
+
+  private async blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to convert blob to data URL'));
+        }
+      };
+      reader.onerror = () => reject(new Error('FileReader error while converting blob'));
+      reader.readAsDataURL(blob);
+    });
   }
 
   resetState(): void {

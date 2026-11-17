@@ -463,16 +463,19 @@ interface CountdownDisplay {
                   <div class="relative w-full h-48 bg-stone-200 overflow-hidden">
                     @if (item.type === 'video') {
                       <div class="w-full h-full bg-black flex items-center justify-center relative">
-                        <img 
+                        <video 
                           [src]="item.media_url" 
-                          alt="Video thumbnail"
-                          class="w-full h-full object-cover opacity-80" />
-                        <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
-                          <div class="w-10 h-10 rounded-full bg-white/90 text-stone-900 flex items-center justify-center shadow-md">
+                          preload="metadata" 
+                          muted 
+                          playsinline 
+                          class="w-full h-full object-cover">
+                        </video>
+                        <div class="absolute inset-0 bg-black/25 flex items-center justify-center pointer-events-none">
+                          <div class="w-10 h-10 rounded-full bg-white/90 text-stone-900 flex items-center justify-center shadow-md text-xs font-bold">
                             ▶
                           </div>
                         </div>
-                        <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-mono">
+                        <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-mono pointer-events-none">
                           VIDEO
                         </span>
                       </div>
