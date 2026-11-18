@@ -454,12 +454,24 @@ export class AiAudioService {
     if (this.ttsTimer) clearInterval(this.ttsTimer);
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
+    utterance.lang = 'en-GB';
+    utterance.rate = 0.92;
+    utterance.pitch = 1.02;
 
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice =
+      voices.find(
+        (v) =>
+          (v.lang === 'en-GB' || v.lang.startsWith('en_GB') || v.lang === 'en-UK') &&
+          (v.name.includes('Female') ||
+            v.name.includes('Sonia') ||
+            v.name.includes('Libby') ||
+            v.name.includes('Serena') ||
+            v.name.includes('Stephanie') ||
+            v.name.includes('Martha') ||
+            v.name.includes('Natural'))
+      ) ||
+      voices.find((v) => v.lang === 'en-GB' || v.lang.startsWith('en_GB') || v.lang === 'en-UK') ||
       voices.find(
         (v) =>
           v.lang.startsWith('en') &&
@@ -468,7 +480,8 @@ export class AiAudioService {
             v.name.includes('Samantha') ||
             v.name.includes('Daniel') ||
             v.name.includes('Alex'))
-      ) || voices.find((v) => v.lang.startsWith('en'));
+      ) ||
+      voices.find((v) => v.lang.startsWith('en'));
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;

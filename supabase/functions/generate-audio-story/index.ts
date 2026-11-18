@@ -194,7 +194,7 @@ CRITICAL INTEGRITY RULES:
 
     // 7. Synthesize audio via ElevenLabs
     const elevenApiKey = Deno.env.get("ELEVENLABS_API_KEY");
-    const elevenVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || "pNInz6obpgDQGcFmaJgB"; // Adam / Warm archival narrator
+    const elevenVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || "pFZP5JQG7iQjIQuC4Bku"; // Lily / Gentle, warm velvety British narrator
     let audioBuffer: Uint8Array | null = null;
 
     if (elevenApiKey) {
