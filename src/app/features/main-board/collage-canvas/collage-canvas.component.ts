@@ -75,7 +75,7 @@ interface CardLayout {
               <div class="w-full h-full rounded-lg bg-[#FFFDF7] border border-[#EBE3D7] p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden">
                 <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-[#C85A32]">
                   <span>✉️ Letter</span>
-                  <span class="truncate max-w-[60px]">{{ card.item.location?.district || 'Sealed' }}</span>
+                  <span class="truncate max-w-[70px]">{{ card.item.captured_at ? ('🗓️ ' + formatCardDate(card.item.captured_at)) : (card.item.location?.district || 'Sealed') }}</span>
                 </div>
                 <p class="font-serif-display text-[9px] sm:text-[10px] text-[#231F20] leading-snug line-clamp-3 sm:line-clamp-4 italic my-auto">
                   "{{ card.item.letter_text || card.item.title }}"
@@ -104,6 +104,12 @@ interface CardLayout {
                     [alt]="card.item.title"
                     loading="lazy"
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                }
+
+                @if (card.item.captured_at) {
+                  <span class="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-amber-200 text-[8px] sm:text-[9px] px-1 py-0.5 rounded font-mono font-bold z-10 pointer-events-none flex items-center gap-0.5">
+                    <span>🗓️</span> {{ formatCardDate(card.item.captured_at) }}
+                  </span>
                 }
 
                 <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 sm:p-1.5 z-10 pointer-events-none">
@@ -187,7 +193,13 @@ interface CardLayout {
             <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6E665F] bg-[#FAF7F2] px-3.5 py-2.5 rounded-xl border border-[#E5DDD3]">
               <span>👤 Author: <strong class="text-[#231F20]">&#64;{{ item.author_nickname }}</strong></span>
               <span>📍 <strong class="text-[#231F20]">{{ item.location?.district }}, {{ item.location?.city }}</strong></span>
-              <span>📅 {{ item.created_at | date:'mediumDate' }}</span>
+              @if (item.captured_at) {
+                <span class="text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                  <span>🗓️ Captured:</span> <strong>{{ formatCardDateFull(item.captured_at) }}</strong>
+                </span>
+              } @else {
+                <span>📅 Posted: {{ item.created_at | date:'mediumDate' }}</span>
+              }
             </div>
 
             <!-- Community Comments Section -->
@@ -302,6 +314,36 @@ export class CollageCanvasComponent {
       hash |= 0;
     }
     return Math.abs(hash);
+  }
+
+  formatCardDate(isoDate?: string | null): string {
+    if (!isoDate) return '';
+    try {
+      const parts = isoDate.split('-');
+      if (parts.length >= 2) {
+        const year = parts[0];
+        const monthNum = parseInt(parts[1], 10) - 1;
+        const d = new Date(parseInt(year, 10), monthNum, parts[2] ? parseInt(parts[2], 10) : 1);
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+      }
+      return isoDate;
+    } catch {
+      return isoDate;
+    }
+  }
+
+  formatCardDateFull(isoDate?: string | null): string {
+    if (!isoDate) return '';
+    try {
+      const parts = isoDate.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      return isoDate;
+    } catch {
+      return isoDate;
+    }
   }
 
   onCardClick(item: MemoryItem): void {

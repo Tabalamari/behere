@@ -116,12 +116,23 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
             }
           </div>
 
+          <!-- Date Filter -->
+          <div class="relative flex-1 sm:w-36">
+            <input 
+              type="date" 
+              [ngModel]="boardState.filterDate()"
+              (ngModelChange)="onDateFilterChange($event)"
+              [max]="todayDate"
+              title="Filter by memory date"
+              class="w-full px-2.5 py-1.5 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#C85A32] transition text-[#231F20]" />
+          </div>
+
           <!-- Reset Filter Button -->
-          @if (boardState.hasActiveLocation() || boardState.filterCountry() || boardState.filterCity() || boardState.filterDistrict()) {
+          @if (boardState.hasActiveLocation() || boardState.filterCountry() || boardState.filterCity() || boardState.filterDistrict() || boardState.filterDate()) {
             <button 
               type="button" 
               (click)="resetFilters()"
-              title="Reset location filters"
+              title="Reset all filters"
               class="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-[#6E665F] hover:text-[#231F20] text-xs font-semibold transition cursor-pointer shrink-0">
               ✕ Reset
             </button>
@@ -129,21 +140,38 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
         </div>
       </div>
 
-      <!-- ACTIVE FILTER BADGE -->
-      @if (boardState.selectedLocation(); as loc) {
-        <div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 animate-fadeIn">
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm">📍</span>
-            <span>Filtering memories for: <strong>{{ loc.district }}</strong>, {{ loc.city }}</span>
+      <!-- ACTIVE FILTER BADGES -->
+      <div class="space-y-1.5">
+        @if (boardState.selectedLocation(); as loc) {
+          <div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 animate-fadeIn">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">📍</span>
+              <span>Filtering memories for: <strong>{{ loc.district }}</strong>, {{ loc.city }}</span>
+            </div>
+            <button 
+              type="button"
+              (click)="clearLocationFilter()"
+              class="text-xs font-semibold text-amber-800 hover:underline cursor-pointer">
+              Show all districts
+            </button>
           </div>
-          <button 
-            type="button"
-            (click)="resetFilters()"
-            class="text-xs font-semibold text-amber-800 hover:underline cursor-pointer">
-            Show all districts
-          </button>
-        </div>
-      }
+        }
+
+        @if (boardState.filterDate(); as fDate) {
+          <div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 animate-fadeIn">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">🗓️</span>
+              <span>Filtering memories by date: <strong>{{ formatDisplayDate(fDate) }}</strong></span>
+            </div>
+            <button 
+              type="button" 
+              (click)="clearDateFilter()"
+              class="text-xs font-semibold text-rose-800 hover:underline cursor-pointer">
+              Show all dates
+            </button>
+          </div>
+        }
+      </div>
     </section>
 
     <!-- CREATION MODAL DIALOG (ADD PHOTO / VIDEO / LETTER) -->
@@ -440,6 +468,25 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               </div>
             }
 
+            <!-- OPTIONAL ORIGINAL DATE FOR VINTAGE / PAST PHOTOS, VIDEOS & MEMORIES -->
+            <div class="p-3 rounded-2xl bg-[#FAF7F2] border border-[#E5DDD3] space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-[#231F20] flex items-center gap-1.5">
+                  <span>🗓️</span>
+                  <span>Captured in the past?</span>
+                </label>
+                <span class="text-[10px] text-[#6E665F] uppercase font-semibold">Optional</span>
+              </div>
+              <p class="text-[11px] text-[#6E665F] leading-snug">
+                Was this photo or memory captured in the past? Add the original date to preserve its history.
+              </p>
+              <input 
+                type="date" 
+                formControlName="capturedAt"
+                [max]="todayDate"
+                class="w-full px-2.5 py-1.5 rounded-xl border border-[#D8CEC2] text-xs bg-white focus:outline-none focus:border-[#C85A32]" />
+            </div>
+
             @if (formGeneralError()) {
               <p class="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
                 {{ formGeneralError() }}
@@ -495,6 +542,7 @@ export class ControlsFilterBarComponent {
   readonly fileValidationError = signal<string | null>(null);
   readonly formGeneralError = signal<string | null>(null);
   readonly isSubmitting = signal<boolean>(false);
+  readonly todayDate = new Date().toISOString().slice(0, 10);
 
   createForm = this.fb.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
@@ -503,7 +551,8 @@ export class ControlsFilterBarComponent {
     district: ['Preston Park', [Validators.required]],
     letterText: [''],
     unlockDate: [this.getDefaultUnlockDate(), [Validators.required]],
-    visibility: ['public', [Validators.required]]
+    visibility: ['public', [Validators.required]],
+    capturedAt: ['']
   });
 
   constructor() {
@@ -611,8 +660,38 @@ export class ControlsFilterBarComponent {
     this.memoryService.loadCanvasMemories(item.id);
   }
 
+  onDateFilterChange(val: string): void {
+    this.boardState.filterDate.set(val || '');
+    this.memoryService.loadCanvasMemories(this.boardState.selectedLocation()?.id);
+  }
+
+  clearDateFilter(): void {
+    this.boardState.filterDate.set('');
+    this.memoryService.loadCanvasMemories(this.boardState.selectedLocation()?.id);
+  }
+
+  clearLocationFilter(): void {
+    this.boardState.clearLocation();
+    this.memoryService.loadCanvasMemories(null);
+  }
+
+  formatDisplayDate(isoDate: string): string {
+    if (!isoDate) return '';
+    try {
+      const parts = isoDate.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      return isoDate;
+    } catch {
+      return isoDate;
+    }
+  }
+
   resetFilters(): void {
     this.boardState.clearLocation();
+    this.boardState.filterDate.set('');
     this.countrySuggestions.set([]);
     this.citySuggestions.set([]);
     this.districtSuggestions.set([]);
@@ -646,7 +725,8 @@ export class ControlsFilterBarComponent {
       district: curLoc?.district || this.boardState.filterDistrict() || 'Preston Park',
       letterText: '',
       unlockDate: this.getDefaultUnlockDate(),
-      visibility: 'public'
+      visibility: 'public',
+      capturedAt: ''
     });
 
     this.isCreateModalOpen.set(true);
@@ -781,7 +861,8 @@ export class ControlsFilterBarComponent {
         isPrivate: formVals.visibility === 'private',
         unlockDate: type === 'letter' && formVals.unlockDate 
           ? new Date(formVals.unlockDate).toISOString() 
-          : new Date().toISOString()
+          : new Date().toISOString(),
+        capturedAt: formVals.capturedAt || null
       });
 
       this.isSubmitting.set(false);

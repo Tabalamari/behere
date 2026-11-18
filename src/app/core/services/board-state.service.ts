@@ -15,6 +15,7 @@ export class BoardStateService {
   readonly filterCountry = signal<string>('');
   readonly filterCity = signal<string>('');
   readonly filterDistrict = signal<string>('');
+  readonly filterDate = signal<string>('');
 
   // Live platform counters (with sensible demo fallbacks when offline or unseeded)
   readonly totalUsersCount = signal<number>(1284);
@@ -53,6 +54,7 @@ export class BoardStateService {
     this.filterCountry.set('');
     this.filterCity.set('');
     this.filterDistrict.set('');
+    this.filterDate.set('');
     this.refreshLockedLettersCount();
   }
 

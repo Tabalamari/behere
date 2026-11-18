@@ -48,12 +48,14 @@ CREATE TABLE IF NOT EXISTS public.memories (
   is_private BOOLEAN DEFAULT false NOT NULL,
   unlock_date TIMESTAMPTZ DEFAULT now() NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  captured_at DATE,
   CONSTRAINT chk_letter_len CHECK (char_length(letter_text) <= 2500)
 );
 
 CREATE INDEX IF NOT EXISTS idx_memories_location ON public.memories (location_id);
 CREATE INDEX IF NOT EXISTS idx_memories_user ON public.memories (user_id);
 CREATE INDEX IF NOT EXISTS idx_memories_unlock ON public.memories (unlock_date, is_private);
+CREATE INDEX IF NOT EXISTS idx_memories_captured_at ON public.memories (captured_at);
 
 -- Comments on memories
 CREATE TABLE IF NOT EXISTS public.comments (

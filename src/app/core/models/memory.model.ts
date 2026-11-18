@@ -31,6 +31,7 @@ export interface MemoryItem {
   is_private: boolean;
   unlock_date: string;
   created_at: string;
+  captured_at?: string | null;
   // Joined presentation fields
   author_nickname?: string;
   location?: LocationPin;

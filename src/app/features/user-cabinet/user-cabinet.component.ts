@@ -504,7 +504,7 @@ interface CountdownDisplay {
 
                     <div class="pt-3 border-t border-[#E5DDD3] flex items-center justify-between">
                       <span class="text-[10px] text-[#6E665F]">
-                        {{ formatReadableDate(item.created_at) }}
+                        {{ item.captured_at ? ('🗓️ Captured ' + formatReadableDate(item.captured_at)) : formatReadableDate(item.created_at) }}
                       </span>
                       <button
                         type="button"

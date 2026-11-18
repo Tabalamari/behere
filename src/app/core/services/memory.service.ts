@@ -446,9 +446,40 @@ export class MemoryService {
   async loadCanvasMemories(locationId?: string | null): Promise<MemoryItem[]> {
     this.isLoading.set(true);
     try {
+      const selectWithCapturedAt = `
+        id,
+        user_id,
+        location_id,
+        type,
+        title,
+        media_url,
+        letter_text,
+        is_private,
+        unlock_date,
+        created_at,
+        captured_at,
+        profiles(nickname),
+        locations(*)
+      `;
+
       let query = this.supabase.client
         .from('memories')
-        .select(`
+        .select(selectWithCapturedAt)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Only query by location_id if it's a valid PostgreSQL UUID
+      if (locationId && isValidUUID(locationId)) {
+        query = query.eq('location_id', locationId);
+      }
+
+      let queryRes = await query;
+      let queryData: any[] | null = queryRes.data;
+      let queryError = queryRes.error;
+
+      // Graceful fallback if captured_at column is not yet migrated in Supabase
+      if (queryError && (queryError.message?.includes('captured_at') || queryError.code === '42703')) {
+        const fallbackSelect = `
           id,
           user_id,
           location_id,
@@ -461,19 +492,22 @@ export class MemoryService {
           created_at,
           profiles(nickname),
           locations(*)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      // Only query by location_id if it's a valid PostgreSQL UUID
-      if (locationId && isValidUUID(locationId)) {
-        query = query.eq('location_id', locationId);
+        `;
+        let retryQuery = this.supabase.client
+          .from('memories')
+          .select(fallbackSelect)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (locationId && isValidUUID(locationId)) {
+          retryQuery = retryQuery.eq('location_id', locationId);
+        }
+        const retryResult = await retryQuery;
+        queryData = retryResult.data;
+        queryError = retryResult.error;
       }
 
-      const { data, error } = await query;
-
-      if (!error && data) {
-        const mapped: MemoryItem[] = data.map((row: any) => ({
+      if (!queryError && queryData) {
+        const mapped: MemoryItem[] = queryData.map((row: any) => ({
           id: row.id,
           user_id: row.user_id,
           location_id: row.location_id,
@@ -484,6 +518,7 @@ export class MemoryService {
           is_private: row.is_private,
           unlock_date: row.unlock_date,
           created_at: row.created_at,
+          captured_at: row.captured_at || null,
           author_nickname: row.profiles?.nickname || 'Anonymous Neighbor',
           location: row.locations
         }));
@@ -506,6 +541,18 @@ export class MemoryService {
             );
             if (districtMatches.length > 0) {
               filtered = districtMatches;
+            }
+          }
+
+          // If date filter is active, filter memories matching captured_at or created_at
+          const filterDateVal = this.boardState.filterDate()?.trim();
+          if (filterDateVal) {
+            const dateMatches = filtered.filter((m) => {
+              const itemDate = (m.captured_at || m.created_at || '').substring(0, filterDateVal.length);
+              return itemDate === filterDateVal;
+            });
+            if (dateMatches.length > 0) {
+              filtered = dateMatches;
             }
           }
 
@@ -538,6 +585,15 @@ export class MemoryService {
     } else if (locationId) {
       const filtered = fallback.filter((m) => m.location_id === locationId);
       if (filtered.length > 0) fallback = filtered;
+    }
+
+    const filterDateVal = this.boardState.filterDate()?.trim();
+    if (filterDateVal) {
+      const dateFiltered = fallback.filter((m) => {
+        const itemDate = (m.captured_at || m.created_at || '').substring(0, filterDateVal.length);
+        return itemDate === filterDateVal;
+      });
+      if (dateFiltered.length > 0) fallback = dateFiltered;
     }
     const finalFallback = fallback.slice(0, 25);
     this.memories.set(finalFallback);
@@ -638,6 +694,7 @@ export class MemoryService {
     letterText?: string | null;
     isPrivate?: boolean;
     unlockDate?: string;
+    capturedAt?: string | null;
   }): Promise<{ success: boolean; data?: MemoryItem; error?: string }> {
     if (!this.auth.isAuthenticated()) {
       return { success: false, error: 'User must be authenticated' };
@@ -712,7 +769,7 @@ export class MemoryService {
         : new Date().toISOString();
       const isLocked = new Date(unlockDate).getTime() > Date.now();
 
-      const insertPayload = {
+      const insertPayload: Record<string, any> = {
         user_id: user.id,
         location_id: validLocId,
         type: params.type,
@@ -720,10 +777,11 @@ export class MemoryService {
         media_url: params.mediaUrl ?? null,
         letter_text: params.letterText ? params.letterText.trim() : null,
         is_private: !!params.isPrivate,
-        unlock_date: unlockDate
+        unlock_date: unlockDate,
+        ...(params.capturedAt ? { captured_at: params.capturedAt } : {})
       };
 
-      const { data, error } = await this.supabase.client
+      let insertResult: any = await this.supabase.client
         .from('memories')
         .insert(insertPayload)
         .select(`
@@ -736,13 +794,36 @@ export class MemoryService {
           letter_text,
           is_private,
           unlock_date,
-          created_at
+          created_at,
+          captured_at
         `)
         .single();
 
-      if (error) {
-        throw error;
+      // Gracefully retry without captured_at if column is not yet migrated in Supabase
+      if (insertResult.error && (insertResult.error.message?.includes('captured_at') || insertResult.error.code === '42703')) {
+        delete insertPayload['captured_at'];
+        insertResult = await this.supabase.client
+          .from('memories')
+          .insert(insertPayload)
+          .select(`
+            id,
+            user_id,
+            location_id,
+            type,
+            title,
+            media_url,
+            letter_text,
+            is_private,
+            unlock_date,
+            created_at
+          `)
+          .single();
       }
+
+      if (insertResult.error) {
+        throw insertResult.error;
+      }
+      const data = insertResult.data;
 
       const newItem: MemoryItem = {
         id: data.id,
@@ -755,6 +836,7 @@ export class MemoryService {
         is_private: data.is_private,
         unlock_date: data.unlock_date,
         created_at: data.created_at,
+        captured_at: data.captured_at || params.capturedAt || null,
         author_nickname: user.nickname,
         location: params.location
       };
@@ -787,6 +869,7 @@ export class MemoryService {
         is_private: !!params.isPrivate,
         unlock_date: unlockDate,
         created_at: new Date().toISOString(),
+        captured_at: params.capturedAt || null,
         author_nickname: user.nickname,
         location: params.location
       };
@@ -896,6 +979,7 @@ export class MemoryService {
           is_private: d.is_private,
           unlock_date: d.unlock_date,
           created_at: d.created_at,
+          captured_at: d.captured_at || null,
           author_nickname: user.nickname,
           location: d.locations
             ? {
@@ -994,6 +1078,7 @@ export class MemoryService {
           is_private: d.is_private,
           unlock_date: d.unlock_date,
           created_at: d.created_at,
+          captured_at: d.captured_at || null,
           author_nickname: user.nickname,
           location: d.locations
             ? {
