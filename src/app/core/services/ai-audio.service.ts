@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, effect } from '@angular/core';
+import { Injectable, inject, signal, effect, computed } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { AuthModalService } from './auth-modal.service';
@@ -66,6 +66,14 @@ export class AiAudioService {
   readonly currentTime = signal<number>(0);
   readonly duration = signal<number>(28);
   readonly errorMessage = signal<string | null>(null);
+
+  readonly currentAudioUrl = computed(() => {
+    return this.currentStory()?.audio_url || '';
+  });
+
+  isUsingTTSActive(): boolean {
+    return this.isUsingTTS;
+  }
 
   // Audio HTML5 Element
   private audioElement: HTMLAudioElement | null = null;
@@ -289,12 +297,12 @@ export class AiAudioService {
   /**
    * Play / Pause / Synthesize Action Handler
    */
-  async handlePlayOrGenerate(): Promise<void> {
+  async handlePlayOrGenerate(audioEl?: HTMLAudioElement): Promise<void> {
     this.errorMessage.set(null);
 
     // 1. If currently playing, toggle pause
     if (this.isPlaying()) {
-      this.pause();
+      this.pause(audioEl);
       return;
     }
 
@@ -309,17 +317,29 @@ export class AiAudioService {
     }
 
     const story = this.currentStory();
+    const targetEl = audioEl || this.audioElement;
 
-    // 3. If pre-recorded / cached audio URL exists, play with fallback
-    if (story?.audio_url) {
-      this.isUsingTTS = false;
-      await this.playAudio(story.audio_url);
-      return;
+    // 3. If pre-recorded / cached audio URL exists, play immediately on DOM audio element!
+    if (story?.audio_url && targetEl) {
+      try {
+        this.isUsingTTS = false;
+        const resolvedUrl = new URL(story.audio_url, window.location.href).href;
+        if (targetEl.src !== resolvedUrl) {
+          targetEl.src = resolvedUrl;
+        }
+        targetEl.volume = 1.0;
+        targetEl.muted = false;
+        await targetEl.play();
+        this.isPlaying.set(true);
+        return;
+      } catch (err) {
+        console.warn('Native HTML5 Audio play failed or blocked, falling back to Web Speech Synthesis:', err);
+      }
     }
 
     // 4. If user is logged in, attempt real-time ElevenLabs generation via Supabase Edge Function
     if (this.auth.isAuthenticated()) {
-      const success = await this.generateElevenLabsStory();
+      const success = await this.generateElevenLabsStory(targetEl);
       if (success) return;
     }
 
@@ -332,7 +352,7 @@ export class AiAudioService {
   /**
    * Invokes the deployed Supabase Edge Function `generate-audio-story` (Gemini + ElevenLabs)
    */
-  async generateElevenLabsStory(): Promise<boolean> {
+  async generateElevenLabsStory(targetEl?: HTMLAudioElement | null): Promise<boolean> {
     const session = await this.supabase.client.auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) return false;
@@ -371,7 +391,14 @@ export class AiAudioService {
         this.currentStory.set(newStory);
         this.isCacheValid.set(true);
         this.duration.set(28);
-        await this.playAudio(newStory.audio_url);
+        if (targetEl) {
+          targetEl.src = new URL(newStory.audio_url, window.location.href).href;
+          await targetEl.play();
+          this.isUsingTTS = false;
+          this.isPlaying.set(true);
+        } else {
+          await this.playAudio(newStory.audio_url);
+        }
         return true;
       }
     } catch (err) {
@@ -487,7 +514,7 @@ export class AiAudioService {
     window.speechSynthesis.speak(utterance);
   }
 
-  pause(): void {
+  pause(audioEl?: HTMLAudioElement): void {
     if (this.isUsingTTS && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.pause();
       if (this.ttsTimer) clearInterval(this.ttsTimer);
@@ -495,16 +522,18 @@ export class AiAudioService {
       return;
     }
 
-    if (this.audioElement) {
-      this.audioElement.pause();
+    const targetEl = audioEl || this.audioElement;
+    if (targetEl) {
+      targetEl.pause();
       this.isPlaying.set(false);
     }
   }
 
-  seek(seconds: number): void {
+  seek(seconds: number, audioEl?: HTMLAudioElement): void {
     this.currentTime.set(seconds);
-    if (!this.isUsingTTS && this.audioElement) {
-      this.audioElement.currentTime = seconds;
+    const targetEl = audioEl || this.audioElement;
+    if (!this.isUsingTTS && targetEl) {
+      targetEl.currentTime = seconds;
     }
   }
 }

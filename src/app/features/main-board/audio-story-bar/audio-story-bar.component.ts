@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AiAudioService } from '../../../core/services/ai-audio.service';
 import { BoardStateService } from '../../../core/services/board-state.service';
@@ -10,6 +10,20 @@ import { AuthService } from '../../../core/services/auth.service';
   imports: [CommonModule],
   template: `
     <section class="bg-white rounded-3xl p-3.5 sm:p-4 border border-[#E5DDD3] shadow-sm space-y-2.5 transition-all relative overflow-hidden">
+      <!-- Native HTML5 Audio Element in DOM for 100% reliable Chrome/Safari playback -->
+      <audio 
+        #audioPlayer 
+        [src]="audio.currentAudioUrl()" 
+        preload="auto"
+        (timeupdate)="onAudioTimeUpdate(audioPlayer)"
+        (loadedmetadata)="onAudioLoadedMetadata(audioPlayer)"
+        (durationchange)="onAudioLoadedMetadata(audioPlayer)"
+        (ended)="onAudioEnded()"
+        (play)="onAudioPlay()"
+        (pause)="onAudioPause()"
+        (error)="onAudioError(audioPlayer)"
+        class="hidden">
+      </audio>
       <!-- Top Row: Badge + Status + Expand Transcript Toggle -->
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
@@ -150,6 +164,8 @@ export class AudioStoryBarComponent {
   readonly boardState = inject(BoardStateService);
   readonly auth = inject(AuthService);
 
+  @ViewChild('audioPlayer') audioPlayerRef?: ElementRef<HTMLAudioElement>;
+
   readonly isTranscriptOpen = signal<boolean>(false);
 
   readonly progressPercentage = computed(() => {
@@ -168,7 +184,47 @@ export class AudioStoryBarComponent {
   });
 
   onPlayClick(): void {
-    this.audio.handlePlayOrGenerate();
+    const el = this.audioPlayerRef?.nativeElement;
+    this.audio.handlePlayOrGenerate(el);
+  }
+
+  onAudioTimeUpdate(el: HTMLAudioElement): void {
+    if (!this.audio.isUsingTTSActive()) {
+      this.audio.currentTime.set(el.currentTime);
+    }
+  }
+
+  onAudioLoadedMetadata(el: HTMLAudioElement): void {
+    if (!this.audio.isUsingTTSActive() && el.duration && !isNaN(el.duration)) {
+      this.audio.duration.set(el.duration);
+    }
+  }
+
+  onAudioEnded(): void {
+    this.audio.isPlaying.set(false);
+    this.audio.currentTime.set(0);
+  }
+
+  onAudioPlay(): void {
+    if (!this.audio.isUsingTTSActive()) {
+      this.audio.isPlaying.set(true);
+    }
+  }
+
+  onAudioPause(): void {
+    if (!this.audio.isUsingTTSActive()) {
+      this.audio.isPlaying.set(false);
+    }
+  }
+
+  onAudioError(el: HTMLAudioElement): void {
+    if (!this.audio.isUsingTTSActive()) {
+      console.warn('DOM Audio playback error:', el.error);
+      const transcript = this.audio.currentStory()?.transcript;
+      if (transcript) {
+        this.audio.playSpeechSynthesis(transcript);
+      }
+    }
   }
 
   onScrubProgress(event: MouseEvent): void {
@@ -177,7 +233,8 @@ export class AudioStoryBarComponent {
     const clickX = event.clientX - rect.left;
     const ratio = Math.min(1, Math.max(0, clickX / rect.width));
     const targetSeconds = ratio * this.audio.duration();
-    this.audio.seek(targetSeconds);
+    const el = this.audioPlayerRef?.nativeElement;
+    this.audio.seek(targetSeconds, el);
   }
 
   private formatTime(seconds: number): string {
