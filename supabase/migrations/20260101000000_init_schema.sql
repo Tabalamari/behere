@@ -156,17 +156,19 @@ WITH CHECK (true);
 -- Memories
 ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
 
--- 1) Public unlocked memories visible to everyone (Guests & Authenticated)
+-- 1) Public memories visible to everyone (Guests & Authenticated, including sealed time capsules)
 DROP POLICY IF EXISTS "Public unlocked memories are visible to everyone" ON public.memories;
-CREATE POLICY "Public unlocked memories are visible to everyone"
+DROP POLICY IF EXISTS "Public memories are visible to everyone" ON public.memories;
+CREATE POLICY "Public memories are visible to everyone"
 ON public.memories FOR SELECT
-USING (is_private = false AND unlock_date <= now());
+USING (is_private = false);
 
--- 2) Author can read own unlocked private letters
+-- 2) Author can view all own memories (public and private, locked and unlocked)
 DROP POLICY IF EXISTS "Users can read own unlocked private letters" ON public.memories;
-CREATE POLICY "Users can read own unlocked private letters"
+DROP POLICY IF EXISTS "Users can view own memories" ON public.memories;
+CREATE POLICY "Users can view own memories"
 ON public.memories FOR SELECT
-USING (auth.uid() = user_id AND unlock_date <= now());
+USING (auth.uid() = user_id);
 
 -- 3) Authenticated users can insert own memories
 DROP POLICY IF EXISTS "Authenticated users can insert own memories" ON public.memories;

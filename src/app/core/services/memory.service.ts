@@ -1009,8 +1009,7 @@ export class MemoryService {
   }
 
   /**
-   * Calls get_my_locked_letters() to get metadata for letters with unlock_date > now()
-   * Notice letter_text is hidden!
+   * Fetches metadata for user's letters with unlock_date > now()
    */
   async fetchUserLockedLetters(): Promise<LockedLetterItem[]> {
     const user = this.auth.currentUser();
@@ -1018,25 +1017,49 @@ export class MemoryService {
 
     this.initDemoUserMemoriesIfNeeded(user.id, user.nickname);
 
+    let foundItems: LockedLetterItem[] = [];
+
     try {
-      const { data, error } = await this.supabase.client.rpc('get_my_locked_letters');
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+      // 1. Direct query on memories table for all locked letters belonging to user
+      const { data: dbLetters, error: dbError } = await this.supabase.client
+        .from('memories')
+        .select('id, title, location_id, is_private, unlock_date, created_at, locations(district, city)')
+        .eq('user_id', user.id)
+        .eq('type', 'letter')
+        .gt('unlock_date', new Date().toISOString())
+        .order('unlock_date', { ascending: true });
+
+      if (!dbError && dbLetters && dbLetters.length > 0) {
+        foundItems = dbLetters.map((d: any) => ({
           id: d.id,
           title: d.title,
           location_id: d.location_id,
-          location_name: 'District Board',
+          location_name: d.locations?.district ? `${d.locations.district}, ${d.locations.city || ''}` : 'District Board',
           is_private: d.is_private,
           unlock_date: d.unlock_date,
           created_at: d.created_at
         }));
+      } else {
+        // 2. RPC fallback
+        const { data, error } = await this.supabase.client.rpc('get_my_locked_letters');
+        if (!error && data && data.length > 0) {
+          foundItems = data.map((d: any) => ({
+            id: d.id,
+            title: d.title,
+            location_id: d.location_id,
+            location_name: 'District Board',
+            is_private: d.is_private,
+            unlock_date: d.unlock_date,
+            created_at: d.created_at
+          }));
+        }
       }
     } catch {
       // Fallback
     }
 
     const now = Date.now();
-    return this.userLocalMemories
+    const localItems = this.userLocalMemories
       .filter((m) => m.user_id === user.id && m.type === 'letter' && new Date(m.unlock_date).getTime() > now)
       .map((m) => ({
         id: m.id,
@@ -1047,6 +1070,10 @@ export class MemoryService {
         unlock_date: m.unlock_date,
         created_at: m.created_at
       }));
+
+    // Merge DB items with any unpersisted local session memories deduplicated by id
+    const combined = [...localItems, ...foundItems.filter((f) => !localItems.some((l) => l.id === f.id))];
+    return combined;
   }
 
   /**

@@ -72,17 +72,43 @@ interface CardLayout {
             
             @if (card.item.type === 'letter') {
               <!-- Letter Paper Card -->
-              <div class="w-full h-full rounded-lg bg-[#FFFDF7] border border-[#EBE3D7] p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden">
-                <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-[#C85A32]">
-                  <span>✉️ Letter</span>
-                  <span class="truncate max-w-[70px]">{{ card.item.captured_at ? ('🗓️ ' + formatCardDate(card.item.captured_at)) : (card.item.location?.district || 'Sealed') }}</span>
-                </div>
-                <p class="font-serif-display text-[9px] sm:text-[10px] text-[#231F20] leading-snug line-clamp-3 sm:line-clamp-4 italic my-auto">
-                  "{{ card.item.letter_text || card.item.title }}"
-                </p>
-                <div class="text-[8px] sm:text-[9px] text-[#6E665F] truncate">
-                  &#64;{{ card.item.author_nickname || 'Neighbor' }}
-                </div>
+              <div class="w-full h-full rounded-lg bg-[#FFFDF7] border border-[#EBE3D7] p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden relative">
+                @if (isSealed(card.item)) {
+                  <!-- SEALED TIME CAPSULE CARD -->
+                  <div class="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded">
+                    <span class="flex items-center gap-0.5">🔒 Sealed</span>
+                    <span class="truncate max-w-[55px]">{{ card.item.location?.district || 'Capsule' }}</span>
+                  </div>
+
+                  <!-- Blurred teaser text with padlock overlay -->
+                  <div class="relative my-auto flex items-center justify-center overflow-hidden py-1">
+                    <p class="font-serif-display text-[8px] sm:text-[9px] text-[#231F20] leading-snug line-clamp-3 italic filter blur-[2px] select-none pointer-events-none opacity-40">
+                      {{ card.item.letter_text || 'Secret archival neighborhood time-capsule sealed until opening date' }}
+                    </p>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <span class="text-sm sm:text-base">🔒</span>
+                      <span class="text-[7px] sm:text-[8px] font-mono font-bold text-amber-900 bg-amber-100/90 px-1 rounded shadow-2xs mt-0.5">
+                        {{ formatUnlockCountdown(card.item.unlock_date) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between text-[7px] sm:text-[8px] text-[#6E665F] truncate pt-0.5 border-t border-[#EBE3D7]">
+                    <span class="truncate">&#64;{{ card.item.author_nickname || 'Neighbor' }}</span>
+                    <span class="text-amber-800 font-semibold">Capsule</span>
+                  </div>
+                } @else {
+                  <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-[#C85A32]">
+                    <span>✉️ Letter</span>
+                    <span class="truncate max-w-[70px]">{{ card.item.captured_at ? ('🗓️ ' + formatCardDate(card.item.captured_at)) : (card.item.location?.district || 'Sealed') }}</span>
+                  </div>
+                  <p class="font-serif-display text-[9px] sm:text-[10px] text-[#231F20] leading-snug line-clamp-3 sm:line-clamp-4 italic my-auto">
+                    "{{ card.item.letter_text || card.item.title }}"
+                  </p>
+                  <div class="text-[8px] sm:text-[9px] text-[#6E665F] truncate">
+                    &#64;{{ card.item.author_nickname || 'Neighbor' }}
+                  </div>
+                }
               </div>
             } @else {
               <!-- Photo or Video Card -->
@@ -168,9 +194,42 @@ interface CardLayout {
             <!-- Media / Text Container -->
             <div class="rounded-2xl overflow-hidden bg-stone-100 border border-[#E5DDD3]">
               @if (item.type === 'letter') {
-                <div class="p-6 bg-[#FFFDF7] font-serif-display text-sm sm:text-base text-[#231F20] leading-relaxed italic border-l-4 border-[#C85A32] whitespace-pre-wrap break-words max-h-[60vh] overflow-y-auto">
-                  "{{ item.letter_text || item.title }}"
-                </div>
+                @if (isSealed(item)) {
+                  <!-- SEALED MODAL VIEW -->
+                  <div class="p-6 bg-[#FAF7F2] border-l-4 border-amber-600 rounded-2xl space-y-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center text-2xl shrink-0 shadow-xs">
+                        🔒
+                      </div>
+                      <div>
+                        <h4 class="font-serif-display font-bold text-base text-[#231F20]">
+                          Sealed Time Capsule
+                        </h4>
+                        <p class="text-xs text-amber-800">
+                          Scheduled to unlock on {{ formatReadableDate(item.unlock_date) }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Blurred preview quote block with lock message -->
+                    <div class="relative p-6 rounded-2xl bg-white border border-[#E5DDD3] overflow-hidden select-none">
+                      <p class="font-serif-display text-sm text-[#231F20] leading-relaxed italic filter blur-[3px] opacity-40">
+                        {{ item.letter_text || 'This archival message was sealed for future generations and cannot be read until the timer reaches zero.' }}
+                      </p>
+                      <div class="absolute inset-0 flex flex-col items-center justify-center bg-white/40 backdrop-blur-[2px] p-4 text-center">
+                        <span class="text-3xl mb-1.5">⏳</span>
+                        <strong class="text-xs font-bold text-[#231F20]">Content is cryptographically sealed</strong>
+                        <span class="text-[11px] text-[#6E665F] mt-1">
+                          Unlocks {{ formatUnlockCountdown(item.unlock_date) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="p-6 bg-[#FFFDF7] font-serif-display text-sm sm:text-base text-[#231F20] leading-relaxed italic border-l-4 border-[#C85A32] whitespace-pre-wrap break-words max-h-[60vh] overflow-y-auto">
+                    "{{ item.letter_text || item.title }}"
+                  </div>
+                }
               } @else if (item.type === 'video') {
                 <div class="relative bg-black flex items-center justify-center rounded-2xl overflow-hidden min-h-[220px]">
                   <video 
@@ -343,6 +402,41 @@ export class CollageCanvasComponent {
       return isoDate;
     } catch {
       return isoDate;
+    }
+  }
+
+  isSealed(item?: MemoryItem | null): boolean {
+    if (!item || item.type !== 'letter' || !item.unlock_date) return false;
+    return new Date(item.unlock_date).getTime() > Date.now();
+  }
+
+  formatUnlockCountdown(unlockDateStr?: string | null): string {
+    if (!unlockDateStr) return '';
+    const diff = new Date(unlockDateStr).getTime() - Date.now();
+    if (diff <= 0) return 'Unlocked';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 365) {
+      const years = (days / 365).toFixed(1).replace('.0', '');
+      return `in ~${years}y`;
+    }
+    if (days > 30) {
+      const months = Math.floor(days / 30);
+      return `in ~${months}mo`;
+    }
+    if (days > 0) {
+      return `in ${days}d`;
+    }
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    return `in ${hours}h`;
+  }
+
+  formatReadableDate(iso?: string | null): string {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return iso;
     }
   }
 
