@@ -2,6 +2,29 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { LocationPin, MemoryItem } from '../models/memory.model';
 import { SupabaseService } from './supabase.service';
 
+function getStoredNumber(key: string, fallback: number): number {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) {
+      const parsed = Number(raw);
+      if (!isNaN(parsed) && parsed >= 0) return parsed;
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+  return fallback;
+}
+
+function setStoredNumber(key: string, value: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    // Ignore
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -17,9 +40,9 @@ export class BoardStateService {
   readonly filterDistrict = signal<string>('');
   readonly filterDate = signal<string>('');
 
-  // Live platform counters (with sensible demo fallbacks when offline or unseeded)
-  readonly totalUsersCount = signal<number>(1284);
-  readonly lockedLettersCount = signal<number>(14);
+  // Live platform counters with local persistence to avoid flicker on page refresh
+  readonly totalUsersCount = signal<number>(getStoredNumber('behere_total_users', 5));
+  readonly lockedLettersCount = signal<number>(getStoredNumber('behere_locked_letters', 0));
 
   // Visible Canvas Cards (up to 25 items)
   readonly canvasCards = signal<MemoryItem[]>([]);
@@ -61,11 +84,12 @@ export class BoardStateService {
   async refreshPlatformCounters(): Promise<void> {
     try {
       const { data, error } = await this.supabase.client.rpc('get_total_users_count');
-      if (!error && typeof data === 'number' && data > 0) {
+      if (!error && typeof data === 'number' && data >= 0) {
         this.totalUsersCount.set(data);
+        setStoredNumber('behere_total_users', data);
       }
     } catch {
-      // Keep initial/fallback
+      // Keep stored value
     }
     await this.refreshLockedLettersCount();
   }
@@ -78,13 +102,14 @@ export class BoardStateService {
       });
       if (!error && typeof data === 'number') {
         this.lockedLettersCount.set(data);
+        if (!locId) {
+          setStoredNumber('behere_locked_letters', data);
+        }
       } else {
-        // Dynamic demo adjustment based on district selection
-        this.lockedLettersCount.set(locId ? 6 : 14);
+        this.lockedLettersCount.set(0);
       }
     } catch {
-      const locId = this.selectedLocation()?.id || null;
-      this.lockedLettersCount.set(locId ? 6 : 14);
+      this.lockedLettersCount.set(0);
     }
   }
 }
