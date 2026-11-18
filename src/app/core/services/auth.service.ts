@@ -57,6 +57,16 @@ export class AuthService {
       this.isLoading.set(false);
     }
 
+    // Detect recovery tokens in URL if landing on root
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('recovery')) {
+        this.isRecoveryMode.set(true);
+        this.modalService.open('update-password', undefined, 'Please enter your new password to complete recovery.');
+      }
+    }
+
     this.supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         this.isRecoveryMode.set(true);
@@ -205,7 +215,7 @@ export class AuthService {
 
     try {
       // Use window.location.origin so reset callback works on any host (pages.dev or localhost)
-      const redirectTo = `${window.location.origin}/#recovery`;
+      const redirectTo = `${window.location.origin}/reset-password`;
       const { error } = await this.supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo
       });
