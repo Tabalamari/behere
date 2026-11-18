@@ -20,7 +20,8 @@ import { AuthService } from '../../../core/services/auth.service';
         (durationchange)="onAudioLoadedMetadata(audioPlayer)"
         (ended)="onAudioEnded()"
         (play)="onAudioPlay()"
-        (pause)="onAudioPause()"
+        (playing)="onAudioPlay()"
+        (pause)="onAudioPause(audioPlayer)"
         (error)="onAudioError(audioPlayer)"
         class="hidden">
       </audio>
@@ -74,29 +75,42 @@ import { AuthService } from '../../../core/services/auth.service';
       <div class="flex items-center gap-2.5 sm:gap-4 bg-[#FAF7F2] p-2.5 sm:p-3 rounded-2xl border border-[#E5DDD3]">
         <!-- CONTROLS GROUP: PLAY/PAUSE + STOP -->
         <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <!-- Main Action Button: Play / Pause / Resume / Generating -->
-          <button
-            type="button"
-            (click)="onPlayClick()"
-            [disabled]="audio.isGenerating()"
-            [title]="audio.isPlaying() ? 'Pause spoken narration' : (audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration')"
-            [attr.aria-label]="audio.isPlaying() ? 'Pause spoken narration' : (audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration')"
-            class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer text-white"
-            [ngClass]="audio.isPlaying() ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#C85A32] hover:bg-[#B34E2A]'">
-            @if (audio.isGenerating()) {
+          @if (audio.isGenerating()) {
+            <!-- Loading Spinner Button -->
+            <button
+              type="button"
+              disabled
+              title="Generating spoken narration..."
+              class="w-11 h-11 rounded-2xl bg-[#C85A32] text-white flex items-center justify-center shadow-sm shrink-0 opacity-80 cursor-wait">
               <span class="animate-spin text-base">⏳</span>
-            } @else if (audio.isPlaying()) {
+            </button>
+          } @else if (audio.isPlaying()) {
+            <!-- EXPLICIT PAUSE BUTTON -->
+            <button
+              type="button"
+              (click)="onPauseClick()"
+              title="Pause spoken narration"
+              aria-label="Pause spoken narration"
+              class="w-11 h-11 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 cursor-pointer">
               <!-- Pause Icon -->
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
               </svg>
-            } @else {
+            </button>
+          } @else {
+            <!-- PLAY / RESUME BUTTON -->
+            <button
+              type="button"
+              (click)="onPlayClick()"
+              [title]="audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration'"
+              [attr.aria-label]="audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration'"
+              class="w-11 h-11 rounded-2xl bg-[#C85A32] hover:bg-[#B34E2A] text-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 cursor-pointer">
               <!-- Play / Resume Icon -->
               <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>
-            }
-          </button>
+            </button>
+          }
 
           <!-- Dedicated Stop & Reset Button (visible whenever playback has started or paused) -->
           @if (audio.isPlaying() || audio.currentTime() > 0) {
@@ -231,6 +245,9 @@ export class AudioStoryBarComponent {
   onAudioTimeUpdate(el: HTMLAudioElement): void {
     if (!this.audio.isUsingTTSActive()) {
       this.audio.currentTime.set(el.currentTime);
+      if (!el.paused && !this.audio.isPlaying()) {
+        this.audio.isPlaying.set(true);
+      }
     }
   }
 
@@ -251,9 +268,12 @@ export class AudioStoryBarComponent {
     }
   }
 
-  onAudioPause(): void {
+  onAudioPause(el?: HTMLAudioElement): void {
     if (!this.audio.isUsingTTSActive()) {
-      this.audio.isPlaying.set(false);
+      const audioEl = el || this.audioPlayerRef?.nativeElement;
+      if (audioEl?.paused) {
+        this.audio.isPlaying.set(false);
+      }
     }
   }
 

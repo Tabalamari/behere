@@ -126,7 +126,7 @@ export class AiAudioService {
     });
 
     this.audioElement.addEventListener('pause', () => {
-      if (!this.isUsingTTS) {
+      if (!this.isUsingTTS && this.audioElement && this.audioElement.currentTime > 0 && this.audioElement.paused) {
         this.isPlaying.set(false);
       }
     });
