@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS public.memories (
   type memory_type NOT NULL,
   title TEXT NOT NULL,
   media_url TEXT,
-  letter_text VARCHAR(500),
+  letter_text VARCHAR(2500),
   is_private BOOLEAN DEFAULT false NOT NULL,
   unlock_date TIMESTAMPTZ DEFAULT now() NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  CONSTRAINT chk_letter_len CHECK (char_length(letter_text) <= 500)
+  CONSTRAINT chk_letter_len CHECK (char_length(letter_text) <= 2500)
 );
 
 CREATE INDEX IF NOT EXISTS idx_memories_location ON public.memories (location_id);

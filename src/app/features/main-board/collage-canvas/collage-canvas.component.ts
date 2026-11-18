@@ -162,7 +162,7 @@ interface CardLayout {
             <!-- Media / Text Container -->
             <div class="rounded-2xl overflow-hidden bg-stone-100 border border-[#E5DDD3]">
               @if (item.type === 'letter') {
-                <div class="p-6 bg-[#FFFDF7] font-serif-display text-sm sm:text-base text-[#231F20] leading-relaxed italic border-l-4 border-[#C85A32]">
+                <div class="p-6 bg-[#FFFDF7] font-serif-display text-sm sm:text-base text-[#231F20] leading-relaxed italic border-l-4 border-[#C85A32] whitespace-pre-wrap break-words max-h-[60vh] overflow-y-auto">
                   "{{ item.letter_text || item.title }}"
                 </div>
               } @else if (item.type === 'video') {

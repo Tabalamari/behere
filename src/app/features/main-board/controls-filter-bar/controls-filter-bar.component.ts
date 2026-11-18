@@ -402,15 +402,15 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
                       Time-Capsule Letter Text *
                     </label>
                     <span class="text-[11px] text-[#6E665F]">
-                      {{ letterCharCount() }} / 500
+                      {{ letterCharCount() }} / 2500
                     </span>
                   </div>
                   <textarea 
                     formControlName="letterText"
-                    maxlength="500" 
-                    rows="4" 
+                    maxlength="2500" 
+                    rows="6" 
                     placeholder="Write a message to be cryptographically sealed until future opening date..."
-                    class="w-full p-3 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#231F20] resize-none leading-relaxed">
+                    class="w-full p-3 rounded-xl border border-[#D8CEC2] text-xs bg-[#FAF7F2] focus:bg-white focus:outline-none focus:border-[#231F20] resize-y leading-relaxed">
                   </textarea>
                 </div>
 

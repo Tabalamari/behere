@@ -288,7 +288,7 @@ interface CountdownDisplay {
                     </p>
 
                     <!-- Letter Body in vintage paper quote style -->
-                    <div class="mt-4 p-4 rounded-2xl bg-white border border-[#E5DDD3] text-xs font-serif italic text-[#3B3531] leading-relaxed shadow-xs">
+                    <div class="mt-4 p-4 rounded-2xl bg-white border border-[#E5DDD3] text-xs font-serif italic text-[#3B3531] leading-relaxed shadow-xs whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
                       "{{ letter.letter_text }}"
                     </div>
                   </div>
