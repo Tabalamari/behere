@@ -21,7 +21,6 @@ import { AuthService } from '../../../core/services/auth.service';
         (ended)="onAudioEnded()"
         (play)="onAudioPlay()"
         (playing)="onAudioPlay()"
-        (pause)="onAudioPause(audioPlayer)"
         (error)="onAudioError(audioPlayer)"
         class="hidden">
       </audio>
@@ -268,17 +267,8 @@ export class AudioStoryBarComponent {
     }
   }
 
-  onAudioPause(el?: HTMLAudioElement): void {
-    if (!this.audio.isUsingTTSActive()) {
-      const audioEl = el || this.audioPlayerRef?.nativeElement;
-      if (audioEl?.paused) {
-        this.audio.isPlaying.set(false);
-      }
-    }
-  }
-
   onAudioError(el: HTMLAudioElement): void {
-    if (!this.audio.isUsingTTSActive()) {
+    if (!this.audio.isUsingTTSActive() && this.audio.isPlaying()) {
       console.warn('DOM Audio playback error:', el.error);
       const transcript = this.audio.currentStory()?.transcript;
       if (transcript) {

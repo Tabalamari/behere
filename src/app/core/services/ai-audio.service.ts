@@ -125,12 +125,6 @@ export class AiAudioService {
       this.currentTime.set(0);
     });
 
-    this.audioElement.addEventListener('pause', () => {
-      if (!this.isUsingTTS && this.audioElement && this.audioElement.currentTime > 0 && this.audioElement.paused) {
-        this.isPlaying.set(false);
-      }
-    });
-
     this.audioElement.addEventListener('play', () => {
       if (!this.isUsingTTS) {
         this.isPlaying.set(true);
@@ -505,8 +499,10 @@ export class AiAudioService {
 
     utterance.onerror = (err) => {
       console.warn('SpeechSynthesis error:', err);
-      this.isPlaying.set(false);
-      if (this.ttsTimer) clearInterval(this.ttsTimer);
+      if (err.error !== 'interrupted') {
+        this.isPlaying.set(false);
+        if (this.ttsTimer) clearInterval(this.ttsTimer);
+      }
     };
 
     this.currentUtterance = utterance;
