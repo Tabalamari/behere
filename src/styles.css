@@ -30,8 +30,8 @@ body {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Ensure Mapbox GL container fills space properly */
-.mapboxgl-map {
+/* Ensure MapLibre / Mapbox container fills space properly */
+.maplibregl-map, .mapboxgl-map {
   width: 100% !important;
   height: 100% !important;
   min-height: 360px;

@@ -13,14 +13,40 @@ import {
   signal
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import mapboxgl from 'mapbox-gl';
+import * as maplibregl from 'maplibre-gl';
 import { BoardStateService } from '../../../core/services/board-state.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { LocationPin } from '../../../core/models/memory.model';
-import { environment } from '../../../../environments/environment';
 
-// High-reliability OpenStreetMap raster style for instant fallback if vector tiles fail
-const OSM_RASTER_STYLE: mapboxgl.Style = {
+// Warm, elegant CARTO Voyager tiles matching Be HERE terracotta aesthetic (100% free, zero tokens required)
+const CARTO_VOYAGER_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    'carto-voyager': {
+      type: 'raster',
+      tiles: [
+        'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'
+      ],
+      tileSize: 256,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions" target="_blank">CARTO</a>'
+    }
+  },
+  layers: [
+    {
+      id: 'carto-voyager-layer',
+      type: 'raster',
+      source: 'carto-voyager',
+      minzoom: 0,
+      maxzoom: 20
+    }
+  ]
+};
+
+// OpenStreetMap standard raster style fallback
+const OSM_FALLBACK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
     'osm-tiles': {
@@ -48,30 +74,30 @@ const OSM_RASTER_STYLE: mapboxgl.Style = {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="w-full bg-white border border-border-custom rounded-2xl shadow-sm overflow-hidden flex flex-col">
+    <section class="w-full bg-white border border-[#E5DDD3] rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <!-- Section Header -->
-      <div class="px-4 py-3 bg-bg-paper border-b border-border-custom flex items-center justify-between">
+      <div class="px-4 py-3 bg-[#FAF7F2] border-b border-[#E5DDD3] flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-base">🗺️</span>
-          <h3 class="font-serif font-bold text-sm text-ink">
+          <h3 class="font-serif-display font-bold text-sm text-[#231F20]">
             District Memories Map (1 pin = 1 district)
           </h3>
         </div>
-        <div class="flex items-center gap-2 text-xs text-muted">
+        <div class="flex items-center gap-2 text-xs text-[#6E665F]">
           @if (boardState.selectedLocation(); as loc) {
-            <span class="bg-accent-soft text-accent px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-accent animate-ping"></span>
+            <span class="bg-[#F7E6DF] text-[#C85A32] px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#C85A32] animate-ping"></span>
               {{ loc.district }}, {{ loc.city }}
             </span>
             <button 
               type="button"
               (click)="resetSelection()"
-              class="hover:text-accent underline text-[11px]"
+              class="hover:text-[#C85A32] underline text-[11px] cursor-pointer"
             >
               Reset selection
             </button>
           } @else {
-            <span class="text-muted">Select a pin on the map or from the list below</span>
+            <span class="text-[#6E665F]">Select a pin on the map or from the list below</span>
           }
         </div>
       </div>
@@ -81,7 +107,7 @@ const OSM_RASTER_STYLE: mapboxgl.Style = {
         <!-- WebGL Map container -->
         <div #mapContainer class="w-full h-full min-h-[360px]"></div>
 
-        <!-- Available Districts Quick Bar underneath header if needed -->
+        <!-- Available Districts Quick Bar underneath header -->
         <div class="absolute bottom-2 left-2 z-10 flex flex-wrap items-center gap-1.5 max-w-[calc(100%-120px)] pointer-events-auto">
           @for (pin of activePins(); track pin.id) {
             <button
@@ -89,8 +115,8 @@ const OSM_RASTER_STYLE: mapboxgl.Style = {
               (click)="onPinClick(pin)"
               class="px-2.5 py-1 rounded-full text-[11px] font-semibold transition flex items-center gap-1 shadow-sm border backdrop-blur-md cursor-pointer"
               [ngClass]="boardState.selectedLocation()?.id === pin.id 
-                ? 'bg-accent text-white ring-2 ring-accent border-accent' 
-                : 'bg-white/95 text-ink hover:border-accent border-border-custom hover:bg-white'"
+                ? 'bg-[#C85A32] text-white ring-2 ring-[#C85A32] border-[#C85A32]' 
+                : 'bg-white/95 text-[#231F20] hover:border-[#C85A32] border-[#E5DDD3] hover:bg-white'"
             >
               <span>📍</span>
               <span>{{ pin.district }}</span>
@@ -105,7 +131,7 @@ const OSM_RASTER_STYLE: mapboxgl.Style = {
       display: block;
       width: 100%;
     }
-    .mapboxgl-map {
+    .maplibregl-map, .mapboxgl-map {
       width: 100% !important;
       height: 100% !important;
       min-height: 360px !important;
@@ -119,13 +145,10 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   private supabase = inject(SupabaseService);
   private ngZone = inject(NgZone);
 
-  private map: mapboxgl.Map | null = null;
+  private map: maplibregl.Map | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private styleWatchdogTimeout: ReturnType<typeof setTimeout> | null = null;
-  private markersMap = new Map<string, mapboxgl.Marker>();
+  private markersMap = new Map<string, maplibregl.Marker>();
   readonly activePins = signal<LocationPin[]>([]);
-
-  hasValidMapboxToken = false;
 
   constructor(@Inject(PLATFORM_ID) private platformId: object) {
     // Bidirectional reactive camera flyTo synchronization
@@ -156,10 +179,6 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.styleWatchdogTimeout) {
-      clearTimeout(this.styleWatchdogTimeout);
-      this.styleWatchdogTimeout = null;
-    }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -171,84 +190,53 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Initializes Mapbox GL map with vector layer & automatic OSM raster fallback
+   * Initializes MapLibre GL map with free CARTO Voyager raster layer and OSM fallback
    */
   private initResilientMap(): void {
     this.ngZone.runOutsideAngular(() => {
       try {
-        const token = (environment.mapboxAccessToken || '').trim();
-        const hasToken = token.length > 10 && !token.includes('placeholder');
-        if (hasToken) {
-          mapboxgl.accessToken = token;
-          this.hasValidMapboxToken = true;
-        }
-
         const defaultCenter: [number, number] = [-0.142, 50.835]; // Brighton center
-        const initialStyle = hasToken ? 'mapbox://styles/mapbox/streets-v12' : OSM_RASTER_STYLE;
 
-        this.map = new mapboxgl.Map({
-          accessToken: hasToken ? token : undefined,
+        const mapInstance = new maplibregl.Map({
           container: this.mapContainer.nativeElement,
-          style: initialStyle,
+          style: CARTO_VOYAGER_STYLE,
           center: defaultCenter,
           zoom: 12
         });
 
-        this.map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+        this.map = mapInstance;
+
+        mapInstance.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
 
         let fallbackTriggered = false;
-        const triggerRasterFallback = () => {
-          if (fallbackTriggered || !this.map) return;
-          fallbackTriggered = true;
-          console.warn('[Mapbox] Vector style unavailable or failed to load. Switching to OpenStreetMap raster tiles.');
-          try {
-            this.map.setStyle(OSM_RASTER_STYLE);
-          } catch (err) {
-            console.error('[Mapbox] Failed switching to OSM fallback style:', err);
-          }
-        };
-
-        // If Mapbox vector tiles fail with 401/403 or network error, switch to raster fallback
-        this.map.on('error', (e) => {
-          if (!fallbackTriggered && initialStyle !== OSM_RASTER_STYLE) {
-            triggerRasterFallback();
-          }
-        });
-
-        // Watchdog: If vector style hasn't rendered within 2.5 seconds, automatically apply raster fallback
-        if (initialStyle !== OSM_RASTER_STYLE) {
-          this.styleWatchdogTimeout = setTimeout(() => {
-            if (!this.map?.isStyleLoaded() && !fallbackTriggered) {
-              triggerRasterFallback();
+        mapInstance.on('error', () => {
+          if (!fallbackTriggered) {
+            fallbackTriggered = true;
+            try {
+              mapInstance.setStyle(OSM_FALLBACK_STYLE);
+            } catch (err) {
+              console.warn('Map fallback error:', err);
             }
-          }, 2500);
-        }
-
-        this.map.on('style.load', () => {
-          if (this.styleWatchdogTimeout) {
-            clearTimeout(this.styleWatchdogTimeout);
           }
-          this.map?.resize();
-          this.renderMapboxMarkers();
         });
 
-        this.map.on('load', () => {
-          this.map?.resize();
+        mapInstance.on('load', () => {
+          mapInstance.resize();
           this.renderMapboxMarkers();
         });
 
         // Ensure canvas recalculates size after layout settling
-        setTimeout(() => this.map?.resize(), 300);
-        setTimeout(() => this.map?.resize(), 800);
+        setTimeout(() => mapInstance.resize(), 300);
+        setTimeout(() => mapInstance.resize(), 800);
 
         if (typeof ResizeObserver !== 'undefined' && this.mapContainer?.nativeElement) {
           this.resizeObserver = new ResizeObserver(() => {
-            this.map?.resize();
+            mapInstance.resize();
           });
           this.resizeObserver.observe(this.mapContainer.nativeElement);
         }
       } catch (err) {
-        console.warn('Mapbox initialization fallback error:', err);
+        console.warn('MapLibre initialization error:', err);
       }
     });
   }
@@ -303,7 +291,8 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private renderMapboxMarkers(): void {
-    if (!this.map) return;
+    const currentMap = this.map;
+    if (!currentMap) return;
 
     // Clear existing
     this.markersMap.forEach((m) => m.remove());
@@ -338,26 +327,26 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
           });
         });
 
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 6px;">
             <strong style="font-size: 13px; color: #231F20; display: block; margin-bottom: 2px;">${pin.district}</strong>
             <div style="font-size: 11px; color: #6E665F;">${pin.city}, ${pin.country}</div>
           </div>
         `);
 
-        const marker = new mapboxgl.Marker({ element: el })
+        const marker = new maplibregl.Marker({ element: el })
           .setLngLat([pin.lng, pin.lat])
           .setPopup(popup)
-          .addTo(this.map!);
+          .addTo(currentMap);
 
         this.markersMap.set(pin.id, marker);
       }
 
       // If multiple pins exist, fit bounds to display all
-      if (pins.length > 0 && this.map) {
-        const bounds = new mapboxgl.LngLatBounds();
+      if (pins.length > 0) {
+        const bounds = new maplibregl.LngLatBounds();
         pins.forEach((p) => bounds.extend([p.lng, p.lat]));
-        this.map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+        currentMap.fitBounds(bounds, { padding: 60, maxZoom: 13 });
       }
     });
   }
@@ -369,7 +358,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   resetSelection(): void {
     this.boardState.clearLocation();
     if (this.map && this.activePins().length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
+      const bounds = new maplibregl.LngLatBounds();
       this.activePins().forEach((p) => bounds.extend([p.lng, p.lat]));
       this.map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
     }
