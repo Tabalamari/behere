@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, effect, computed } from '@angular/core';
+import { Injectable, inject, signal, effect, computed, untracked } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { AuthModalService } from './auth-modal.service';
@@ -92,7 +92,9 @@ export class AiAudioService {
     effect(() => {
       const location = this.boardState.selectedLocation();
       const cards = this.boardState.canvasCards();
-      this.checkAndSyncAudioStory(location, cards);
+      untracked(() => {
+        this.checkAndSyncAudioStory(location, cards);
+      });
     });
   }
 
