@@ -70,29 +70,49 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- Main Controls Bar: Play Button + Audio Progress + Timers -->
-      <div class="flex items-center gap-3 sm:gap-4 bg-[#FAF7F2] p-3 rounded-2xl border border-[#E5DDD3]">
-        <!-- PLAY / GENERATE / PAUSE BUTTON -->
-        <button
-          type="button"
-          (click)="onPlayClick()"
-          [disabled]="audio.isGenerating()"
-          [title]="audio.isPlaying() ? 'Pause spoken narration' : 'Play spoken narration'"
-          class="w-11 h-11 rounded-2xl bg-[#C85A32] hover:bg-[#B34E2A] text-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer">
-          @if (audio.isGenerating()) {
-            <span class="animate-spin text-base">⏳</span>
-          } @else if (audio.isPlaying()) {
-            <!-- Pause Icon -->
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-            </svg>
-          } @else {
-            <!-- Play Icon -->
-            <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
+      <!-- Main Controls Bar: Play/Pause/Stop Buttons + Audio Progress + Timers -->
+      <div class="flex items-center gap-2.5 sm:gap-4 bg-[#FAF7F2] p-2.5 sm:p-3 rounded-2xl border border-[#E5DDD3]">
+        <!-- CONTROLS GROUP: PLAY/PAUSE + STOP -->
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <!-- Main Action Button: Play / Pause / Resume / Generating -->
+          <button
+            type="button"
+            (click)="onPlayClick()"
+            [disabled]="audio.isGenerating()"
+            [title]="audio.isPlaying() ? 'Pause spoken narration' : (audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration')"
+            [attr.aria-label]="audio.isPlaying() ? 'Pause spoken narration' : (audio.currentTime() > 0 ? 'Resume spoken narration' : 'Play spoken narration')"
+            class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer text-white"
+            [ngClass]="audio.isPlaying() ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#C85A32] hover:bg-[#B34E2A]'">
+            @if (audio.isGenerating()) {
+              <span class="animate-spin text-base">⏳</span>
+            } @else if (audio.isPlaying()) {
+              <!-- Pause Icon -->
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+              </svg>
+            } @else {
+              <!-- Play / Resume Icon -->
+              <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            }
+          </button>
+
+          <!-- Dedicated Stop & Reset Button (visible whenever playback has started or paused) -->
+          @if (audio.isPlaying() || audio.currentTime() > 0) {
+            <button
+              type="button"
+              (click)="onStopClick()"
+              title="Stop playback and rewind to beginning"
+              aria-label="Stop playback"
+              class="w-11 h-11 rounded-2xl bg-white hover:bg-stone-100 text-[#6E665F] hover:text-[#231F20] border border-[#E5DDD3] flex items-center justify-center shadow-xs shrink-0 transition-transform active:scale-95 cursor-pointer">
+              <!-- Stop Icon -->
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h12v12H6z"/>
+              </svg>
+            </button>
           }
-        </button>
+        </div>
 
         <!-- Progress & Text Section -->
         <div class="flex-1 min-w-0 flex flex-col justify-center gap-1">
@@ -100,6 +120,16 @@ import { AuthService } from '../../../core/services/auth.service';
             @if (audio.isGenerating()) {
               <span class="font-medium text-[#C85A32] animate-pulse">
                 Researching district history with Gemini 2.5 Flash & ElevenLabs...
+              </span>
+            } @else if (audio.isPlaying()) {
+              <span class="truncate font-semibold text-[#C85A32] flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Now Playing: {{ audio.currentStory()?.audio_url ? 'Archival Spoken Narration' : 'Local Historian Speech (TTS)' }}
+              </span>
+            } @else if (audio.currentTime() > 0) {
+              <span class="truncate font-medium text-amber-800 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Paused — Click to resume
               </span>
             } @else if (!audio.isCacheValid() && !auth.isAuthenticated()) {
               <span class="text-amber-800 font-medium truncate">
@@ -186,6 +216,16 @@ export class AudioStoryBarComponent {
   onPlayClick(): void {
     const el = this.audioPlayerRef?.nativeElement;
     this.audio.handlePlayOrGenerate(el);
+  }
+
+  onPauseClick(): void {
+    const el = this.audioPlayerRef?.nativeElement;
+    this.audio.pause(el);
+  }
+
+  onStopClick(): void {
+    const el = this.audioPlayerRef?.nativeElement;
+    this.audio.stop(el);
   }
 
   onAudioTimeUpdate(el: HTMLAudioElement): void {

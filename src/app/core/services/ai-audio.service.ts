@@ -529,6 +529,21 @@ export class AiAudioService {
     }
   }
 
+  stop(audioEl?: HTMLAudioElement): void {
+    const targetEl = audioEl || this.audioElement;
+    if (targetEl) {
+      targetEl.pause();
+      targetEl.currentTime = 0;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      if (this.ttsTimer) clearInterval(this.ttsTimer);
+    }
+    this.isPlaying.set(false);
+    this.currentTime.set(0);
+    this.isUsingTTS = false;
+  }
+
   seek(seconds: number, audioEl?: HTMLAudioElement): void {
     this.currentTime.set(seconds);
     const targetEl = audioEl || this.audioElement;
