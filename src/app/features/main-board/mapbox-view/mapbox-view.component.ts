@@ -14,6 +14,11 @@ import {
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import mapboxgl from 'mapbox-gl';
+
+// Enforce standalone pre-bundled CSP worker to prevent esbuild minifier ReferenceError (vt is not defined)
+if (typeof window !== 'undefined') {
+  (mapboxgl as any).workerUrl = '/mapbox-gl-csp-worker.js';
+}
 import { BoardStateService } from '../../../core/services/board-state.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { LocationPin } from '../../../core/models/memory.model';
@@ -183,6 +188,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
           this.hasValidMapboxToken = true;
         }
 
+        (mapboxgl as any).workerUrl = '/mapbox-gl-csp-worker.js';
         const defaultCenter: [number, number] = [-0.142, 50.835]; // Brighton center
         const initialStyle = hasToken ? 'mapbox://styles/mapbox/streets-v12' : OSM_RASTER_STYLE;
 
