@@ -89,7 +89,7 @@ import { AuthModalService } from '../../services/auth-modal.service';
                 type="button"
                 (click)="openSignIn()"
                 class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#231F20] text-white hover:bg-[#3A3537] transition shadow-xs whitespace-nowrap cursor-pointer">
-                SignIn
+                Sign In
               </button>
             }
           </div>
