@@ -750,15 +750,25 @@ export class ControlsFilterBarComponent {
         mediaUrl = uploadRes.publicUrl;
       }
 
-      // 2. Prepare location pin object
+      // 2. Resolve true global coordinates for this district & city
+      const targetCountry = formVals.country || 'United Kingdom';
+      const targetCity = formVals.city || 'Brighton';
+      const targetDistrict = formVals.district || 'Preston Park';
+
+      const coords = await this.geoService.resolveCoordinates(
+        targetCountry,
+        targetCity,
+        targetDistrict
+      );
+
       const loc: LocationPin = {
         id: this.boardState.selectedLocation()?.id || `loc-${Date.now()}`,
         osm_id: this.boardState.selectedLocation()?.osm_id || Date.now(),
-        country: formVals.country || 'United Kingdom',
-        city: formVals.city || 'Brighton',
-        district: formVals.district || 'Preston Park',
-        lat: this.boardState.selectedLocation()?.lat || 50.8409,
-        lng: this.boardState.selectedLocation()?.lng || -0.1472
+        country: targetCountry,
+        city: targetCity,
+        district: targetDistrict,
+        lat: coords.lat,
+        lng: coords.lng
       };
 
       // 3. Create memory in Supabase
@@ -793,6 +803,7 @@ export class ControlsFilterBarComponent {
 
         await this.boardState.refreshPlatformCounters();
         await this.boardState.refreshLockedLettersCount();
+        this.boardState.triggerPinsRefresh();
 
         this.closeCreateModal();
       } else {

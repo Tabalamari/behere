@@ -655,7 +655,7 @@ export class MemoryService {
         try {
           const { data: existingLoc } = await this.supabase.client
             .from('locations')
-            .select('id')
+            .select('id, lat, lng')
             .eq('country', params.location.country)
             .eq('city', params.location.city)
             .eq('district', params.location.district)
@@ -664,6 +664,20 @@ export class MemoryService {
 
           if (existingLoc?.id && isValidUUID(existingLoc.id)) {
             validLocId = existingLoc.id;
+            // If the existing record has default Preston Park coords, update it with the real resolved coords!
+            if (params.location.lat && params.location.lng) {
+              const isDefaultPreston = Math.abs(existingLoc.lat - 50.8409) < 0.001 && Math.abs(existingLoc.lng - (-0.1472)) < 0.001;
+              if (isDefaultPreston && params.location.district.toLowerCase() !== 'preston park') {
+                try {
+                  await this.supabase.client
+                    .from('locations')
+                    .update({ lat: params.location.lat, lng: params.location.lng })
+                    .eq('id', existingLoc.id);
+                } catch {
+                  // Non-fatal if update fails
+                }
+              }
+            }
           } else {
             const rawOsm = params.location.osm_id;
             const osmNum = rawOsm && !isNaN(Number(rawOsm))

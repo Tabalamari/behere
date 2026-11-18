@@ -24,6 +24,13 @@ export class BoardStateService {
   readonly canvasCards = signal<MemoryItem[]>([]);
   readonly isLoadingCards = signal<boolean>(false);
 
+  // Trigger to reload map pins whenever a new memory/location is created
+  readonly districtPinsRefreshTrigger = signal<number>(0);
+
+  triggerPinsRefresh(): void {
+    this.districtPinsRefreshTrigger.update((n) => n + 1);
+  }
+
   // Computed helper
   readonly hasActiveLocation = computed(() => !!this.selectedLocation());
 

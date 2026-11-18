@@ -3,7 +3,7 @@ import { Observable, from } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { SupabaseService } from './supabase.service';
 import { LocationPin } from '../models/memory.model';
-import { WORLD_COUNTRIES, POPULAR_LOCATIONS_SEED } from '../constants/geo-data';
+import { WORLD_COUNTRIES, POPULAR_LOCATIONS_SEED, KNOWN_DISTRICT_COORDINATES } from '../constants/geo-data';
 
 export type GeoLevel = 'country' | 'city' | 'district';
 
@@ -181,5 +181,74 @@ export class OverpassGeoService {
       distinctUntilChanged(),
       switchMap((query) => from(this.search(level, query, parentCountry, parentCity)))
     );
+  }
+
+  /**
+   * Universal geocoder: resolves true { lat, lng } for any district/city/country worldwide
+   * 1. Checks instant local dictionary (Brighton, Kyiv, Lviv, London, Paris, etc.)
+   * 2. Free OpenStreetMap Nominatim API for any place on Earth
+   * 3. Fallback to city/country center
+   */
+  async resolveCoordinates(
+    country?: string,
+    city?: string,
+    district?: string
+  ): Promise<{ lat: number; lng: number }> {
+    const cleanDist = (district || '').trim().toLowerCase();
+    const cleanCity = (city || '').trim().toLowerCase();
+
+    // 1. Instant local dictionary check
+    if (cleanDist && KNOWN_DISTRICT_COORDINATES[cleanDist]) {
+      return KNOWN_DISTRICT_COORDINATES[cleanDist];
+    }
+    if (cleanCity && KNOWN_DISTRICT_COORDINATES[cleanCity]) {
+      return KNOWN_DISTRICT_COORDINATES[cleanCity];
+    }
+
+    // 2. OpenStreetMap Nominatim global geocoding
+    const queryParts = [district, city, country].filter(Boolean);
+    if (queryParts.length > 0) {
+      try {
+        const query = queryParts.join(', ');
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+            return {
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon)
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Nominatim geocoding error:', err);
+      }
+    }
+
+    // 3. Fallback query with city + country
+    if (city && country) {
+      try {
+        const query = `${city}, ${country}`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+            return {
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon)
+            };
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    // Default Brighton center fallback
+    return { lat: 50.8409, lng: -0.1472 };
   }
 }

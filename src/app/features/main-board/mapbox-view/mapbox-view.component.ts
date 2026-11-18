@@ -17,6 +17,7 @@ import * as maplibregl from 'maplibre-gl';
 import { BoardStateService } from '../../../core/services/board-state.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { LocationPin } from '../../../core/models/memory.model';
+import { KNOWN_DISTRICT_COORDINATES } from '../../../core/constants/geo-data';
 
 // Warm, elegant CARTO Voyager tiles matching Be HERE terracotta aesthetic (100% free, zero tokens required)
 const CARTO_VOYAGER_STYLE: maplibregl.StyleSpecification = {
@@ -154,14 +155,22 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
     // Bidirectional reactive camera flyTo synchronization
     effect(() => {
       const selected = this.boardState.selectedLocation();
-      if (selected && this.map) {
+      if (selected && this.map && selected.lat && selected.lng && (selected.lat !== 0 || selected.lng !== 0)) {
         this.map.flyTo({
           center: [selected.lng, selected.lat],
-          zoom: 13,
+          zoom: 13.5,
           speed: 1.2,
           curve: 1.42,
           essential: true
         });
+      }
+    });
+
+    // Reactive pin refresh when new memories/locations are added
+    effect(() => {
+      this.boardState.districtPinsRefreshTrigger();
+      if (isPlatformBrowser(this.platformId)) {
+        this.loadDistrictPins();
       }
     });
   }
@@ -242,7 +251,7 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Fetches district locations that have at least one memory
+   * Fetches district locations that have at least one memory and resolves true global coordinates
    */
   async loadDistrictPins(): Promise<void> {
     try {
@@ -250,13 +259,13 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
         .from('locations')
         .select('*');
 
-      let pins: LocationPin[] = [];
+      let rawPins: LocationPin[] = [];
 
       if (!error && data && data.length > 0) {
-        pins = data as LocationPin[];
+        rawPins = data as LocationPin[];
       } else {
         // Fallback seed pins (Brighton archive)
-        pins = [
+        rawPins = [
           {
             id: 'loc-1',
             osm_id: 1001,
@@ -280,7 +289,40 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
         ];
       }
 
-      this.activePins.set(pins);
+      // Deduplicate by district + city and ensure true global coordinates
+      const seen = new Set<string>();
+      const resolvedPins: LocationPin[] = [];
+
+      for (const pin of rawPins) {
+        const cleanCountry = (pin.country || '').trim().toLowerCase();
+        const cleanCity = (pin.city || '').trim().toLowerCase();
+        const cleanDist = (pin.district || '').trim().toLowerCase();
+        const key = `${cleanCountry}_${cleanCity}_${cleanDist}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        let lat = pin.lat;
+        let lng = pin.lng;
+
+        // Check if known district coordinates can correct overlapping Preston Park defaults or (0,0)
+        if (KNOWN_DISTRICT_COORDINATES[cleanDist]) {
+          const known = KNOWN_DISTRICT_COORDINATES[cleanDist];
+          const isAtDefaultPreston = Math.abs(lat - 50.8409) < 0.001 && Math.abs(lng - (-0.1472)) < 0.001;
+          const isAtZero = Math.abs(lat) < 0.0001 && Math.abs(lng) < 0.0001;
+          if ((isAtDefaultPreston && cleanDist !== 'preston park') || isAtZero) {
+            lat = known.lat;
+            lng = known.lng;
+          }
+        }
+
+        resolvedPins.push({
+          ...pin,
+          lat,
+          lng
+        });
+      }
+
+      this.activePins.set(resolvedPins);
 
       if (this.map) {
         this.renderMapboxMarkers();
@@ -353,6 +395,14 @@ export class MapboxViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onPinClick(pin: LocationPin): void {
     this.boardState.setSelectedLocation(pin);
+    if (this.map && pin.lat && pin.lng && (pin.lat !== 0 || pin.lng !== 0)) {
+      this.map.flyTo({
+        center: [pin.lng, pin.lat],
+        zoom: 13.5,
+        essential: true,
+        duration: 1000
+      });
+    }
   }
 
   resetSelection(): void {
