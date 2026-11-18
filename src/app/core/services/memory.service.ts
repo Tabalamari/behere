@@ -692,7 +692,10 @@ export class MemoryService {
         }
       }
 
-      const unlockDate = params.unlockDate || new Date().toISOString();
+      // Only time-capsule letters can have future unlock dates; photos and videos are always unlocked immediately
+      const unlockDate = params.type === 'letter' && params.unlockDate 
+        ? params.unlockDate 
+        : new Date().toISOString();
       const isLocked = new Date(unlockDate).getTime() > Date.now();
 
       const insertPayload = {
@@ -744,7 +747,8 @@ export class MemoryService {
 
       this.userLocalMemories.unshift(newItem);
 
-      if (!isLocked && !newItem.is_private) {
+      // Instantly place new public memory on the Canvas
+      if (!newItem.is_private) {
         this.memories.update((current) => [newItem, ...current.filter((m) => m.id !== newItem.id)]);
         this.boardState.canvasCards.update((current) => [newItem, ...current.filter((m) => m.id !== newItem.id)].slice(0, 25));
       }
@@ -754,7 +758,10 @@ export class MemoryService {
 
       return { success: true, data: newItem };
     } catch (err: unknown) {
-      const isLocked = new Date(params.unlockDate || '').getTime() > Date.now();
+      const unlockDate = params.type === 'letter' && params.unlockDate 
+        ? params.unlockDate 
+        : new Date().toISOString();
+      const isLocked = new Date(unlockDate).getTime() > Date.now();
       const mockItem: MemoryItem = {
         id: 'local-' + Date.now(),
         user_id: user.id,
@@ -764,7 +771,7 @@ export class MemoryService {
         media_url: params.mediaUrl,
         letter_text: params.letterText,
         is_private: !!params.isPrivate,
-        unlock_date: params.unlockDate || new Date().toISOString(),
+        unlock_date: unlockDate,
         created_at: new Date().toISOString(),
         author_nickname: user.nickname,
         location: params.location
@@ -772,12 +779,14 @@ export class MemoryService {
 
       this.userLocalMemories.unshift(mockItem);
 
-      if (!isLocked && !mockItem.is_private) {
-        this.memories.update((current) => [mockItem, ...current]);
-        this.boardState.canvasCards.update((current) => [mockItem, ...current]);
+      // Instantly place new public memory on the Canvas in fallback mode
+      if (!mockItem.is_private) {
+        this.memories.update((current) => [mockItem, ...current.filter((m) => m.id !== mockItem.id)]);
+        this.boardState.canvasCards.update((current) => [mockItem, ...current.filter((m) => m.id !== mockItem.id)].slice(0, 25));
       }
 
       await this.boardState.refreshPlatformCounters();
+      await this.boardState.refreshLockedLettersCount();
 
       return { success: true, data: mockItem };
     }

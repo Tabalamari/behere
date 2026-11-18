@@ -237,13 +237,25 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
             <!-- MEDIA UPLOAD SECTION (FOR PHOTO & VIDEO) -->
             @if (modalType() === 'photo' || modalType() === 'video') {
               <div class="space-y-2">
-                <label class="block text-xs font-semibold text-[#231F20]">
-                  Media File (Mobile Camera or Gallery) *
-                </label>
+                <div class="flex items-center justify-between">
+                  <label class="block text-xs font-semibold text-[#231F20]">
+                    Media File *
+                  </label>
+                  <span class="text-[10px] text-[#6E665F]">
+                    Gallery or Camera
+                  </span>
+                </div>
 
-                <!-- Hidden inputs with capture="environment" for native camera capture -->
+                <!-- Hidden inputs: Gallery (without capture) and Camera (with capture="environment") -->
                 <input 
-                  #photoInput 
+                  #photoGalleryInput 
+                  type="file" 
+                  accept="image/*" 
+                  class="hidden" 
+                  (change)="onFileSelected($event)" />
+
+                <input 
+                  #photoCameraInput 
                   type="file" 
                   accept="image/*" 
                   capture="environment" 
@@ -251,51 +263,111 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
                   (change)="onFileSelected($event)" />
 
                 <input 
-                  #videoInput 
+                  #videoGalleryInput 
+                  type="file" 
+                  accept="video/*" 
+                  class="hidden" 
+                  (change)="onFileSelected($event)" />
+
+                <input 
+                  #videoCameraInput 
                   type="file" 
                   accept="video/*" 
                   capture="environment" 
                   class="hidden" 
                   (change)="onFileSelected($event)" />
 
-                <!-- Upload Drop Zone -->
-                <div 
-                  (click)="triggerNativeFileInput()"
-                  class="border-2 border-dashed border-[#D8CEC2] hover:border-[#C85A32] rounded-2xl p-4 text-center bg-[#FAF7F2] hover:bg-[#F7E6DF]/30 transition cursor-pointer">
-                  
-                  @if (selectedFile()) {
-                    <div class="flex items-center justify-center gap-3">
+                <!-- Selection Buttons when no file selected -->
+                @if (!selectedFile()) {
+                  <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                    <!-- Option 1: Gallery / Device Files -->
+                    <button
+                      type="button"
+                      (click)="triggerGalleryInput()"
+                      class="p-3.5 sm:p-4 rounded-2xl border-2 border-dashed border-[#D8CEC2] hover:border-[#C85A32] bg-[#FAF7F2] hover:bg-[#F7E6DF]/30 text-center flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer group">
+                      <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white border border-[#E5DDD3] shadow-2xs flex items-center justify-center text-xl group-hover:scale-105 transition-transform">
+                        🖼️
+                      </div>
+                      <div class="text-center">
+                        <strong class="text-xs font-bold text-[#231F20] block">
+                          {{ modalType() === 'photo' ? 'Photo Gallery' : 'Video Library' }}
+                        </strong>
+                        <span class="text-[10px] text-[#6E665F] leading-tight block mt-0.5">
+                          Pick from device
+                        </span>
+                      </div>
+                    </button>
+
+                    <!-- Option 2: Live Camera Capture -->
+                    <button
+                      type="button"
+                      (click)="triggerCameraInput()"
+                      class="p-3.5 sm:p-4 rounded-2xl border-2 border-dashed border-[#D8CEC2] hover:border-[#C85A32] bg-[#FAF7F2] hover:bg-[#F7E6DF]/30 text-center flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer group">
+                      <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white border border-[#E5DDD3] shadow-2xs flex items-center justify-center text-xl group-hover:scale-105 transition-transform">
+                        {{ modalType() === 'photo' ? '📸' : '🎬' }}
+                      </div>
+                      <div class="text-center">
+                        <strong class="text-xs font-bold text-[#231F20] block">
+                          {{ modalType() === 'photo' ? 'Take Photo' : 'Record Video' }}
+                        </strong>
+                        <span class="text-[10px] text-[#6E665F] leading-tight block mt-0.5">
+                          Open live camera
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] text-center text-[#6E665F]">
+                    {{ modalType() === 'photo' ? 'Photos: JPG, PNG, WebP (max 5 MB)' : 'Videos: MP4, MOV (max 60 seconds)' }}
+                  </p>
+                } @else {
+                  <!-- Media Preview Card -->
+                  <div class="p-3 rounded-2xl bg-[#FAF7F2] border border-[#E5DDD3] space-y-2.5">
+                    <div class="flex items-center gap-3">
                       @if (previewUrl()) {
                         @if (modalType() === 'photo') {
-                          <img [src]="previewUrl()" class="w-14 h-14 object-cover rounded-xl border border-white shadow-xs" alt="Preview" />
+                          <img [src]="previewUrl()" class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-white shadow-2xs shrink-0" alt="Preview" />
                         } @else {
-                          <div class="w-14 h-14 rounded-xl bg-stone-900 text-white flex items-center justify-center text-xl">
+                          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-stone-900 text-white flex items-center justify-center text-2xl shrink-0">
                             ▶️
                           </div>
                         }
                       }
-                      <div class="text-left text-xs">
-                        <strong class="text-[#231F20] block truncate max-w-[200px]">{{ selectedFile()?.name }}</strong>
-                        <span class="text-[#6E665F] text-[11px]">
+                      <div class="flex-1 min-w-0 text-xs">
+                        <strong class="text-[#231F20] font-semibold block truncate text-[11px] sm:text-xs">
+                          {{ selectedFile()?.name }}
+                        </strong>
+                        <span class="text-[#6E665F] text-[10px] sm:text-[11px] block mt-0.5">
                           {{ (selectedFile()!.size / (1024 * 1024)).toFixed(2) }} MB
                         </span>
-                        <span class="text-[#C85A32] text-[10px] block mt-0.5 font-semibold">Tap to change</span>
+                        <span class="text-emerald-700 font-semibold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✓</span> File ready for canvas
+                        </span>
                       </div>
                     </div>
-                  } @else {
-                    <div class="py-2">
-                      <span class="text-2xl block mb-1">
-                        {{ modalType() === 'photo' ? '📸' : '🎬' }}
-                      </span>
-                      <p class="text-xs font-semibold text-[#231F20]">
-                        Tap to open camera or browse files
-                      </p>
-                      <p class="text-[11px] text-[#6E665F] mt-0.5">
-                        {{ modalType() === 'photo' ? 'Photos: JPG, PNG, WebP (max 5 MB)' : 'Videos: MP4, MOV (max 60 seconds)' }}
-                      </p>
+
+                    <!-- Change / Retake Action Row -->
+                    <div class="flex items-center gap-1.5 pt-1 border-t border-[#E5DDD3]">
+                      <button
+                        type="button"
+                        (click)="triggerGalleryInput()"
+                        class="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-[#231F20] border border-[#D8CEC2] text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 transition active:scale-95 cursor-pointer">
+                        <span>🖼️</span> Gallery
+                      </button>
+                      <button
+                        type="button"
+                        (click)="triggerCameraInput()"
+                        class="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-[#231F20] border border-[#D8CEC2] text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 transition active:scale-95 cursor-pointer">
+                        <span>📸</span> Camera
+                      </button>
+                      <button
+                        type="button"
+                        (click)="clearSelectedFile()"
+                        class="ml-auto px-2 py-1 rounded-lg text-rose-600 hover:bg-rose-50 text-[10px] sm:text-[11px] font-semibold transition active:scale-95 cursor-pointer">
+                        ✕ Remove
+                      </button>
                     </div>
-                  }
-                </div>
+                  </div>
+                }
 
                 @if (fileValidationError()) {
                   <p class="text-xs text-rose-600 bg-rose-50 p-2 rounded-xl border border-rose-200">
@@ -379,14 +451,14 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               <button 
                 type="button"
                 (click)="closeCreateModal()"
-                class="flex-1 py-2.5 rounded-xl border border-[#D8CEC2] text-xs font-semibold text-[#6E665F] hover:bg-stone-100 transition cursor-pointer">
+                class="flex-1 py-3 rounded-xl border border-[#D8CEC2] text-xs font-semibold text-[#6E665F] hover:bg-stone-100 active:scale-95 transition cursor-pointer">
                 Cancel
               </button>
 
               <button 
                 type="submit"
                 [disabled]="isSubmitting() || (modalType() !== 'letter' && !selectedFile()) || createForm.invalid"
-                class="flex-1 py-2.5 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] active:scale-95 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50">
+                class="flex-1 py-3 rounded-xl bg-[#C85A32] hover:bg-[#B24D28] active:scale-95 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50">
                 {{ isSubmitting() ? 'Saving...' : 'Save to Canvas' }}
               </button>
             </div>
@@ -405,8 +477,10 @@ export class ControlsFilterBarComponent {
   private memoryService = inject(MemoryService);
   private fb = inject(FormBuilder);
 
-  @ViewChild('photoInput') photoInputRef?: ElementRef<HTMLInputElement>;
-  @ViewChild('videoInput') videoInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('photoGalleryInput') photoGalleryInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('photoCameraInput') photoCameraInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('videoGalleryInput') videoGalleryInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('videoCameraInput') videoCameraInputRef?: ElementRef<HTMLInputElement>;
 
   readonly allCountries = this.geoService.getAllCountries();
 
@@ -582,14 +656,39 @@ export class ControlsFilterBarComponent {
     this.isCreateModalOpen.set(false);
     this.selectedFile.set(null);
     this.previewUrl.set(null);
+    this.fileValidationError.set(null);
+    this.formGeneralError.set(null);
     this.uploadService.resetState();
+    if (this.photoGalleryInputRef) this.photoGalleryInputRef.nativeElement.value = '';
+    if (this.photoCameraInputRef) this.photoCameraInputRef.nativeElement.value = '';
+    if (this.videoGalleryInputRef) this.videoGalleryInputRef.nativeElement.value = '';
+    if (this.videoCameraInputRef) this.videoCameraInputRef.nativeElement.value = '';
   }
 
-  triggerNativeFileInput(): void {
+  clearSelectedFile(): void {
+    this.selectedFile.set(null);
+    this.previewUrl.set(null);
+    this.fileValidationError.set(null);
+    this.uploadService.resetState();
+    if (this.photoGalleryInputRef) this.photoGalleryInputRef.nativeElement.value = '';
+    if (this.photoCameraInputRef) this.photoCameraInputRef.nativeElement.value = '';
+    if (this.videoGalleryInputRef) this.videoGalleryInputRef.nativeElement.value = '';
+    if (this.videoCameraInputRef) this.videoCameraInputRef.nativeElement.value = '';
+  }
+
+  triggerGalleryInput(): void {
     if (this.modalType() === 'photo') {
-      this.photoInputRef?.nativeElement.click();
+      this.photoGalleryInputRef?.nativeElement.click();
     } else if (this.modalType() === 'video') {
-      this.videoInputRef?.nativeElement.click();
+      this.videoGalleryInputRef?.nativeElement.click();
+    }
+  }
+
+  triggerCameraInput(): void {
+    if (this.modalType() === 'photo') {
+      this.photoCameraInputRef?.nativeElement.click();
+    } else if (this.modalType() === 'video') {
+      this.videoCameraInputRef?.nativeElement.click();
     }
   }
 
@@ -613,6 +712,8 @@ export class ControlsFilterBarComponent {
       this.selectedFile.set(null);
       this.previewUrl.set(null);
       this.fileValidationError.set((err as Error).message || 'Invalid file');
+    } finally {
+      input.value = '';
     }
   }
 
@@ -668,12 +769,31 @@ export class ControlsFilterBarComponent {
         mediaUrl: mediaUrl,
         letterText: formVals.letterText,
         isPrivate: formVals.visibility === 'private',
-        unlockDate: formVals.unlockDate ? new Date(formVals.unlockDate).toISOString() : undefined
+        unlockDate: type === 'letter' && formVals.unlockDate 
+          ? new Date(formVals.unlockDate).toISOString() 
+          : new Date().toISOString()
       });
 
       this.isSubmitting.set(false);
 
       if (res.success) {
+        if (res.data && !res.data.is_private) {
+          const item = res.data;
+          this.boardState.canvasCards.update((current) => [
+            item,
+            ...current.filter((c) => c.id !== item.id)
+          ].slice(0, 25));
+        }
+
+        // Align selected location with newly created memory's district if different
+        const curLoc = this.boardState.selectedLocation();
+        if (curLoc && curLoc.district.toLowerCase() !== loc.district.toLowerCase()) {
+          this.boardState.setSelectedLocation(loc);
+        }
+
+        await this.boardState.refreshPlatformCounters();
+        await this.boardState.refreshLockedLettersCount();
+
         this.closeCreateModal();
       } else {
         this.formGeneralError.set(res.error || 'Failed to save memory');
