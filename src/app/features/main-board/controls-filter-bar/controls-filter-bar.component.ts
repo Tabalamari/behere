@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, ElementRef, ViewChild } from '@angular/core';
+import { Component, inject, signal, effect, ElementRef, ViewChild, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { BoardStateService } from '../../../core/services/board-state.service';
@@ -8,6 +8,7 @@ import { OverpassGeoService } from '../../../core/services/overpass-geo.service'
 import { R2UploadService } from '../../../core/services/r2-upload.service';
 import { MemoryService } from '../../../core/services/memory.service';
 import { LocationPin, MemoryType } from '../../../core/models/memory.model';
+import { POPULAR_LOCATIONS_SEED } from '../../../core/constants/geo-data';
 
 @Component({
   selector: 'app-controls-filter-bar',
@@ -60,8 +61,8 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of countrySuggestions(); track item.id) {
                   <li 
-                    (mousedown)="selectCountry(item)"
-                    class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate">
+                    (pointerdown)="$event.preventDefault(); selectCountry(item)"
+                    class="px-3 py-2 sm:py-1.5 hover:bg-stone-100 active:bg-amber-100 cursor-pointer text-[#231F20] truncate">
                     {{ item.country }}
                   </li>
                 }
@@ -83,8 +84,8 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of citySuggestions(); track item.id) {
                   <li 
-                    (mousedown)="selectCity(item)"
-                    class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate">
+                    (pointerdown)="$event.preventDefault(); selectCity(item)"
+                    class="px-3 py-2 sm:py-1.5 hover:bg-stone-100 active:bg-amber-100 cursor-pointer text-[#231F20] truncate">
                     {{ item.city }} <span class="text-[10px] text-[#6E665F]">({{ item.country }})</span>
                   </li>
                 }
@@ -106,8 +107,8 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
               <ul class="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#D8CEC2] rounded-xl shadow-lg max-h-48 overflow-y-auto text-xs py-1">
                 @for (item of districtSuggestions(); track item.id) {
                   <li 
-                    (mousedown)="selectDistrict(item)"
-                    class="px-3 py-1.5 hover:bg-stone-100 cursor-pointer text-[#231F20] truncate flex items-center justify-between">
+                    (pointerdown)="$event.preventDefault(); selectDistrict(item)"
+                    class="px-3 py-2 sm:py-1.5 hover:bg-stone-100 active:bg-amber-100 cursor-pointer text-[#231F20] truncate flex items-center justify-between">
                     <span>📍 {{ item.district }}</span>
                     <span class="text-[10px] text-[#6E665F]">{{ item.city }}</span>
                   </li>
@@ -224,40 +225,118 @@ import { LocationPin, MemoryType } from '../../../core/models/memory.model';
             </div>
 
             <!-- Location Fields (Country, City, District) -->
-            <div class="space-y-1.5 p-3 rounded-2xl bg-[#FAF7F2] border border-[#E5DDD3]">
-              <span class="text-[11px] font-bold text-[#231F20] uppercase tracking-wider block">
-                Location (Required) *
-              </span>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div class="space-y-2.5 p-3 sm:p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#E5DDD3]">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-[#231F20] uppercase tracking-wider block">
+                  Location (Required) *
+                </span>
+                <span class="text-[10px] text-[#6E665F]">
+                  Mobile-friendly picker
+                </span>
+              </div>
+
+              <!-- Quick Location Chips -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-[#6E665F] font-medium flex items-center gap-1">
+                  <span>⚡</span>
+                  <span>Quick select area:</span>
+                </span>
+                <div class="flex flex-wrap gap-1.5">
+                  @for (q of quickLocations; track q.label) {
+                    <button
+                      type="button"
+                      (click)="applyQuickLocation(q.country, q.city, q.district)"
+                      class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer active:scale-95 border"
+                      [ngClass]="isQuickLocationActive(q.country, q.city, q.district)
+                        ? 'bg-[#C85A32] text-white border-[#C85A32] shadow-xs'
+                        : 'bg-white text-[#231F20] border-[#D8CEC2] hover:bg-stone-50'">
+                      📍 {{ q.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Dropdown Selectors Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-1">
+                <!-- Country -->
                 <div>
-                  <label class="block text-[10px] text-[#6E665F] mb-0.5">Country</label>
-                  <input 
-                    type="text" 
+                  <label class="block text-[10px] text-[#6E665F] font-medium mb-0.5">Country *</label>
+                  <select 
                     formControlName="country"
-                    placeholder="Country"
-                    list="modal-country-list"
-                    class="w-full px-2 py-1.5 rounded-lg border border-[#D8CEC2] text-xs bg-white focus:outline-none" />
-                  <datalist id="modal-country-list">
+                    (change)="onModalCountryChange($event)"
+                    class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] text-xs bg-white text-[#231F20] focus:outline-none focus:border-[#C85A32] transition font-medium cursor-pointer shadow-2xs">
                     @for (c of allCountries; track c) {
-                      <option [value]="c"></option>
+                      <option [value]="c">{{ c }}</option>
                     }
-                  </datalist>
+                  </select>
                 </div>
+
+                <!-- City -->
                 <div>
-                  <label class="block text-[10px] text-[#6E665F] mb-0.5">City</label>
-                  <input 
-                    type="text" 
-                    formControlName="city"
-                    placeholder="City"
-                    class="w-full px-2 py-1.5 rounded-lg border border-[#D8CEC2] text-xs bg-white focus:outline-none" />
+                  <label class="block text-[10px] text-[#6E665F] font-medium mb-0.5">City *</label>
+                  @if (availableModalCities().length > 0 && !isCustomCityMode()) {
+                    <select 
+                      [value]="createForm.get('city')?.value"
+                      (change)="onModalCitySelect($event)"
+                      class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] text-xs bg-white text-[#231F20] focus:outline-none focus:border-[#C85A32] transition font-medium cursor-pointer shadow-2xs">
+                      @for (city of availableModalCities(); track city) {
+                        <option [value]="city">{{ city }}</option>
+                      }
+                      <option value="__custom__">✏️ Other city...</option>
+                    </select>
+                  } @else {
+                    <div class="relative">
+                      <input 
+                        type="text" 
+                        formControlName="city"
+                        placeholder="e.g. Brighton or Kyiv"
+                        (input)="onModalCityInput($any($event.target).value)"
+                        class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] text-xs bg-white text-[#231F20] focus:outline-none focus:border-[#C85A32] transition font-medium" />
+                      @if (availableModalCities().length > 0) {
+                        <button 
+                          type="button" 
+                          (click)="isCustomCityMode.set(false)"
+                          title="Back to list"
+                          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 hover:bg-stone-200">
+                          List
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
+
+                <!-- District -->
                 <div>
-                  <label class="block text-[10px] text-[#6E665F] mb-0.5">District</label>
-                  <input 
-                    type="text" 
-                    formControlName="district"
-                    placeholder="District"
-                    class="w-full px-2 py-1.5 rounded-lg border border-[#D8CEC2] text-xs bg-white focus:outline-none font-medium" />
+                  <label class="block text-[10px] text-[#6E665F] font-medium mb-0.5">District *</label>
+                  @if (availableModalDistricts().length > 0 && !isCustomDistrictMode()) {
+                    <select 
+                      [value]="createForm.get('district')?.value"
+                      (change)="onModalDistrictSelect($event)"
+                      class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] text-xs bg-white text-[#231F20] focus:outline-none focus:border-[#C85A32] transition font-medium cursor-pointer shadow-2xs">
+                      @for (dist of availableModalDistricts(); track dist) {
+                        <option [value]="dist">📍 {{ dist }}</option>
+                      }
+                      <option value="__custom__">✏️ Other district...</option>
+                    </select>
+                  } @else {
+                    <div class="relative">
+                      <input 
+                        type="text" 
+                        formControlName="district"
+                        placeholder="e.g. Preston Park or Podil"
+                        (input)="onModalDistrictInput($any($event.target).value)"
+                        class="w-full px-2.5 py-2 rounded-xl border border-[#D8CEC2] text-xs bg-white text-[#231F20] focus:outline-none focus:border-[#C85A32] transition font-medium" />
+                      @if (availableModalDistricts().length > 0) {
+                        <button 
+                          type="button" 
+                          (click)="isCustomDistrictMode.set(false)"
+                          title="Back to list"
+                          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 hover:bg-stone-200">
+                          List
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             </div>
@@ -530,6 +609,36 @@ export class ControlsFilterBarComponent {
   @ViewChild('videoCameraInput') videoCameraInputRef?: ElementRef<HTMLInputElement>;
 
   readonly allCountries = this.geoService.getAllCountries();
+  readonly popularLocationsSeed = POPULAR_LOCATIONS_SEED;
+
+  readonly quickLocations = [
+    { country: 'United Kingdom', city: 'Brighton', district: 'Preston Park', label: 'Preston Park' },
+    { country: 'United Kingdom', city: 'Brighton', district: 'North Laine', label: 'North Laine' },
+    { country: 'United Kingdom', city: 'Brighton', district: 'Hove Seafront', label: 'Hove Seafront' },
+    { country: 'United Kingdom', city: 'London', district: 'Camden', label: 'Camden (London)' },
+    { country: 'Ukraine', city: 'Kyiv', district: 'Podil', label: 'Podil (Kyiv)' },
+    { country: 'Ukraine', city: 'Lviv', district: 'Stare Misto', label: 'Stare Misto (Lviv)' },
+  ];
+
+  readonly isCustomCityMode = signal<boolean>(false);
+  readonly isCustomDistrictMode = signal<boolean>(false);
+
+  readonly availableModalCities = computed(() => {
+    const country = this.createForm.get('country')?.value || '';
+    if (this.popularLocationsSeed[country]) {
+      return Object.keys(this.popularLocationsSeed[country]);
+    }
+    return [];
+  });
+
+  readonly availableModalDistricts = computed(() => {
+    const country = this.createForm.get('country')?.value || '';
+    const city = this.createForm.get('city')?.value || '';
+    if (this.popularLocationsSeed[country]?.[city]) {
+      return this.popularLocationsSeed[country][city];
+    }
+    return [];
+  });
 
   readonly countrySuggestions = signal<LocationPin[]>([]);
   readonly citySuggestions = signal<LocationPin[]>([]);
@@ -560,6 +669,10 @@ export class ControlsFilterBarComponent {
     effect(() => {
       const loc = this.boardState.selectedLocation();
       if (loc) {
+        const hasCity = !!this.popularLocationsSeed[loc.country]?.[loc.city];
+        const hasDistrict = !!this.popularLocationsSeed[loc.country]?.[loc.city]?.includes(loc.district);
+        this.isCustomCityMode.set(!hasCity);
+        this.isCustomDistrictMode.set(!hasDistrict);
         this.createForm.patchValue({
           country: loc.country,
           city: loc.city,
@@ -651,7 +764,7 @@ export class ControlsFilterBarComponent {
       if (field === 'country') this.countrySuggestions.set([]);
       if (field === 'city') this.citySuggestions.set([]);
       if (field === 'district') this.districtSuggestions.set([]);
-    }, 200);
+    }, 350);
   }
 
   selectDistrict(item: LocationPin): void {
@@ -698,6 +811,76 @@ export class ControlsFilterBarComponent {
     this.memoryService.loadCanvasMemories(null);
   }
 
+  // --- MODAL LOCATION HELPERS ---
+  applyQuickLocation(country: string, city: string, district: string): void {
+    this.isCustomCityMode.set(false);
+    this.isCustomDistrictMode.set(false);
+    this.createForm.patchValue({ country, city, district });
+  }
+
+  isQuickLocationActive(country: string, city: string, district: string): boolean {
+    const formVals = this.createForm.value;
+    return formVals.country === country && formVals.city === city && formVals.district === district;
+  }
+
+  onModalCountryChange(event: Event): void {
+    const country = (event.target as HTMLSelectElement).value;
+    this.createForm.patchValue({ country });
+    const cities = this.popularLocationsSeed[country] ? Object.keys(this.popularLocationsSeed[country]) : [];
+    if (cities.length > 0) {
+      const defaultCity = cities[0];
+      const districts = this.popularLocationsSeed[country][defaultCity] || [];
+      const defaultDistrict = districts[0] || '';
+      this.isCustomCityMode.set(false);
+      this.isCustomDistrictMode.set(false);
+      this.createForm.patchValue({ city: defaultCity, district: defaultDistrict });
+    } else {
+      this.isCustomCityMode.set(true);
+      this.isCustomDistrictMode.set(true);
+      this.createForm.patchValue({ city: '', district: '' });
+    }
+  }
+
+  onModalCitySelect(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    if (val === '__custom__') {
+      this.isCustomCityMode.set(true);
+      this.isCustomDistrictMode.set(true);
+      this.createForm.patchValue({ city: '', district: '' });
+      return;
+    }
+    this.isCustomCityMode.set(false);
+    this.createForm.patchValue({ city: val });
+    const country = this.createForm.get('country')?.value || '';
+    const districts = this.popularLocationsSeed[country]?.[val] || [];
+    if (districts.length > 0) {
+      this.isCustomDistrictMode.set(false);
+      this.createForm.patchValue({ district: districts[0] });
+    } else {
+      this.isCustomDistrictMode.set(true);
+      this.createForm.patchValue({ district: '' });
+    }
+  }
+
+  onModalDistrictSelect(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    if (val === '__custom__') {
+      this.isCustomDistrictMode.set(true);
+      this.createForm.patchValue({ district: '' });
+      return;
+    }
+    this.isCustomDistrictMode.set(false);
+    this.createForm.patchValue({ district: val });
+  }
+
+  onModalCityInput(val: string): void {
+    this.createForm.patchValue({ city: val });
+  }
+
+  onModalDistrictInput(val: string): void {
+    this.createForm.patchValue({ district: val });
+  }
+
   // --- CREATION MODAL HANDLERS ---
   onOpenCreateModal(type: MemoryType): void {
     if (!this.auth.isAuthenticated()) {
@@ -718,11 +901,20 @@ export class ControlsFilterBarComponent {
 
     // Set location from current board selection if available
     const curLoc = this.boardState.selectedLocation();
+    const curCountry = curLoc?.country || this.boardState.filterCountry() || 'United Kingdom';
+    const curCity = curLoc?.city || this.boardState.filterCity() || 'Brighton';
+    const curDistrict = curLoc?.district || this.boardState.filterDistrict() || 'Preston Park';
+
+    const hasCity = !!this.popularLocationsSeed[curCountry]?.[curCity];
+    const hasDistrict = !!this.popularLocationsSeed[curCountry]?.[curCity]?.includes(curDistrict);
+    this.isCustomCityMode.set(!hasCity);
+    this.isCustomDistrictMode.set(!hasDistrict);
+
     this.createForm.patchValue({
       title: '',
-      country: curLoc?.country || this.boardState.filterCountry() || 'United Kingdom',
-      city: curLoc?.city || this.boardState.filterCity() || 'Brighton',
-      district: curLoc?.district || this.boardState.filterDistrict() || 'Preston Park',
+      country: curCountry,
+      city: curCity,
+      district: curDistrict,
       letterText: '',
       unlockDate: this.getDefaultUnlockDate(),
       visibility: 'public',
